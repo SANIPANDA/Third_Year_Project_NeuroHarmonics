@@ -1,0 +1,221 @@
+You are a senior full-stack developer.
+
+Your goal is to build a FULLY WORKING, SIMPLE BUT COMPLETE full-stack web application called **NeuroHarmonics**.
+
+IMPORTANT:
+- PRIORITIZE A WORKING APPLICATION over complexity.
+- Do NOT leave pages blank.
+- Every page MUST render visible content.
+- Use MOCK / SIMULATED logic where required.
+- Add clear comments so a student can modify it later.
+
+================================
+TECH STACK (KEEP IT SIMPLE)
+================================
+Frontend:
+- React (Vite)
+- React Router
+- Plain CSS (NO Tailwind to avoid config issues)
+- Simple animations (CSS or GIFs)
+
+Backend:
+- Python Flask (simpler than FastAPI)
+- REST APIs
+- CORS enabled
+
+Database:
+- SQLite
+- SQLAlchemy ORM
+
+================================
+AUTHENTICATION (SIMPLE)
+================================
+- Signup & Login
+- Use session or simple JWT
+- One default user can be auto-created for demo
+
+================================
+APPLICATION FLOW (IMPORTANT)
+================================
+1. User opens website → sees Landing Page
+2. User signs up / logs in
+3. After login, user sees a NAVBAR with tabs:
+   - Dashboard
+   - Analysis
+   - Recommendations
+   - Reports
+   - Reviews
+
+Every tab MUST show visible UI and data.
+
+================================
+FRONTEND PAGES (MANDATORY)
+================================
+
+LANDING PAGE:
+- App name: NeuroHarmonics
+- Short description
+- "Login" and "Signup" buttons
+
+LOGIN / SIGNUP PAGE:
+- Basic form
+- On success → redirect to Dashboard
+
+---------------------------
+DASHBOARD TAB
+---------------------------
+Show:
+- Welcome message with username
+- Current emotional state (mocked)
+- Total analysis sessions count
+- Simple emotion history list
+
+Data:
+- Fetched from backend SQLite DB
+
+---------------------------
+ANALYSIS TAB
+---------------------------
+Purpose:
+- Simulate EEG analysis
+
+UI:
+- Button: "Run Analysis"
+- Loading animation
+- Result section showing:
+  - Detected Emotion (Stress / Calm / Focus)
+  - Confidence %
+
+Logic:
+- Backend randomly generates emotion
+- Store result in database
+- Display result immediately
+
+---------------------------
+RECOMMENDATIONS TAB (VERY IMPORTANT)
+---------------------------
+Purpose:
+- SHOW YOGA & BREATHING EXERCISES (NOT MUSIC)
+
+Based on emotion:
+- Stress → Yoga poses + breathing exercises
+- Calm → Light stretching + mindfulness
+- Focus → Pranayama + posture correction
+
+UI:
+- Cards with:
+  - Exercise name
+  - Short description
+  - Animated GIF or image (use public URLs)
+- Smooth CSS animation when cards appear
+
+IMPORTANT:
+- Use freely available GIF/image URLs
+- Clearly comment where real therapy content can be added later
+
+---------------------------
+REPORTS TAB
+---------------------------
+Purpose:
+- Show analysis history
+
+UI:
+- Table with:
+  - Date
+  - Emotion
+  - Confidence
+- Button: "Generate Report" (text-based)
+
+Logic:
+- Data fetched from database
+- Report generated as text (no PDF needed)
+
+---------------------------
+REVIEWS TAB
+---------------------------
+Purpose:
+- User feedback
+
+UI:
+- Rating (1–5)
+- Text comment
+- Submit button
+
+Logic:
+- Save feedback in database
+- Display previous reviews below form
+
+================================
+BACKEND REQUIREMENTS
+================================
+Create Flask APIs for:
+- /signup
+- /login
+- /analyze
+- /recommendations
+- /history
+- /reviews
+
+All APIs must:
+- Return JSON
+- Be commented clearly
+- Use mock logic where needed
+
+================================
+DATABASE TABLES
+================================
+Create SQLite tables:
+- users
+- sessions (emotion, confidence, timestamp)
+- reviews (rating, comment, timestamp)
+
+================================
+PROJECT STRUCTURE (IMPORTANT)
+================================
+Ensure this exact structure:
+
+NeuroHarmonics/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Landing.jsx
+│   │   │   ├── Login.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Analysis.jsx
+│   │   │   ├── Recommendations.jsx
+│   │   │   ├── Reports.jsx
+│   │   │   └── Reviews.jsx
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── styles.css
+│   └── index.html
+│
+├── backend/
+│   ├── app.py
+│   ├── models.py
+│   ├── database.db
+│   └── requirements.txt
+│
+└── README.md
+
+================================
+IMPORTANT RULES
+================================
+- DO NOT leave any file empty
+- Every page must render text + UI
+- Add console logs for debugging
+- Add comments like:
+  // CHANGE LOGIC HERE
+  // REPLACE WITH REAL MODEL LATER
+
+================================
+FINAL GOAL
+================================
+This must be a:
+✔ Working website
+✔ Engineering-appropriate
+✔ Easy to explain in viva
+✔ Easy to extend later
+
+Build the full NeuroHarmonics project now with WORKING UI, WORKING APIs, and VISIBLE CONTENT.
