@@ -1,0 +1,504 @@
+/* Move navbar actions higher */
+.navbar .nav-actions {
+  position: absolute;
+  top: 18px;
+  right: 32px;
+}
+.navbar .nav-links {
+  position: absolute;
+  top: 18px;
+  left: 32px;
+}
+.navbar {
+  position: relative;
+}
+/* ================= YOGA SECTION ================= */
+.yoga-section {
+  margin: 60px auto 0 auto;
+  max-width: 1200px;
+}
+.yoga-section .section-title {
+  color: #a855f7;
+  font-size: 1.5rem;
+  margin-bottom: 18px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.yoga-section .video-gallery-grid {
+  margin-bottom: 40px;
+}
+.video-thumb-container video.video-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 22px 22px 0 0;
+  background: #222;
+  border-bottom: 2px solid var(--glass-border);
+}
+.video-card .video-tip {
+  color: #22c55e;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+/* ================= EMOTIONAL HEALTH IMPORTANCE ================= */
+.emotional-health-section {
+  margin: 60px auto 0 auto;
+  max-width: 1200px;
+}
+.emotional-health-section .section-title {
+  color: #a855f7;
+  font-size: 1.5rem;
+  margin-bottom: 18px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.importance-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px;
+  margin-bottom: 40px;
+}
+.importance-card {
+  background: linear-gradient(135deg, rgba(138,43,226,0.13) 0%, rgba(40,40,60,0.18) 100%);
+  border: 2px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(138, 43, 226, 0.10), 0 2px 8px rgba(0,0,0,0.10);
+  padding: 24px 18px;
+  transition: transform 0.22s, box-shadow 0.22s;
+  position: relative;
+  text-align: center;
+}
+.importance-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 16px 48px rgba(138, 43, 226, 0.18), 0 4px 16px rgba(0,0,0,0.13);
+  border-color: #a855f7;
+}
+.importance-card h3 {
+  color: #a855f7;
+  font-size: 1.18rem;
+  margin-bottom: 12px;
+}
+.importance-card ul {
+  list-style: disc;
+  color: #e0e0e0;
+  margin: 12px 0 0 18px;
+  text-align: left;
+}
+.importance-card li {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+.video-quote {
+  font-size: 1.01rem;
+  color: #a855f7;
+  font-style: italic;
+  margin: 8px 18px 0 18px;
+  text-align: center;
+  text-shadow: 0 1px 6px #a855f733;
+}
+.video-tip {
+  font-size: 0.98rem;
+  color: #e0e0e0;
+  margin: 6px 18px 12px 18px;
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+/* ================= VIDEO GALLERY ================= */
+
+.video-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 36px;
+  max-width: 1200px;
+  margin: 48px auto 0 auto;
+  padding-bottom: 60px;
+}
+
+.video-card {
+  background: linear-gradient(135deg, rgba(138,43,226,0.13) 0%, rgba(40,40,60,0.18) 100%);
+  border: 2px solid var(--glass-border);
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(138, 43, 226, 0.10), 0 2px 8px rgba(0,0,0,0.10);
+  overflow: hidden;
+  transition: transform 0.22s, box-shadow 0.22s;
+  position: relative;
+  padding-bottom: 8px;
+}
+.video-card:hover {
+  transform: translateY(-10px) scale(1.04);
+  box-shadow: 0 16px 48px rgba(138, 43, 226, 0.18), 0 4px 16px rgba(0,0,0,0.13);
+  border-color: #a855f7;
+}
+.video-thumb-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #222;
+  overflow: hidden;
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+}
+.video-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-bottom: 2px solid var(--glass-border);
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+}
+.play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #a855f7 60%, #7f8cff 100%);
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 2.2rem;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(138, 43, 226, 0.18);
+  transition: background 0.2s, transform 0.2s;
+  opacity: 0.96;
+  border: 2.5px solid #fff2;
+}
+.play-btn:hover {
+  background: #a855f7;
+  transform: translate(-50%, -50%) scale(1.10);
+  box-shadow: 0 10px 32px #a855f7aa;
+}
+.video-title {
+  padding: 20px 20px 10px 20px;
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.7px;
+  text-shadow: 0 2px 8px #a855f755;
+}
+
+/* Modal tweaks for better look */
+.modal-content {
+  background: linear-gradient(135deg, #181828 80%, #a855f7 100%);
+  border: 2px solid #a855f7;
+  box-shadow: 0 8px 40px #a855f7aa;
+}
+.modal-content video {
+  border: 2px solid #a855f7;
+  box-shadow: 0 2px 16px #a855f7aa;
+}
+
+/* ================= VIDEO MODAL ================= */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(2px);
+}
+.modal-content {
+  background: #181828;
+  margin: 60px auto;
+  padding: 30px 30px 20px 30px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 18px;
+  width: 90%;
+  max-width: 700px;
+  box-shadow: 0 8px 40px rgba(138, 43, 226, 0.25);
+  position: relative;
+  text-align: center;
+}
+.modal-content h2 {
+  color: #a855f7;
+  margin-bottom: 18px;
+}
+.modal-content video {
+  width: 100%;
+  border-radius: 12px;
+  background: #000;
+  margin-bottom: 10px;
+}
+.close {
+  color: #fff;
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  font-size: 2.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.close:hover {
+  color: #a855f7;
+}
+
+/* ================= THREE.JS BACKGROUND ================= */
+#threejs-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Force everything on top to be transparent */
+html, body, main, .tips-hero {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* ================= ROOT VARIABLES ================= */
+:root {
+  --bg-dark: #050505;
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --accent-purple: #8a2be2;
+  --text-gray: #e0e0e0;
+}
+
+/* ================= GLOBAL ================= */
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: transparent;
+  color: white;
+}
+
+.right-section video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* This ensures the video fills the section perfectly */
+}
+
+
+/* ================= VIDEO BACKGROUND ================= */
+.video-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw; /* Using vw/vh ensures it fills the viewport */
+  height: 100vh;
+  z-index: -1; /* Sits behind everything else */
+  overflow: hidden;
+  background: #000; /* Fallback color */
+  display: block !important; /* Forces visibility */
+}
+
+.video-background video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%); /* Perfectly centers the video */
+  object-fit: cover;
+  filter: brightness(0.5) contrast(1.1);
+}
+
+/* ================= NAVBAR ================= */
+.navbar.glass {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  padding: 16px 28px 22px;
+
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+}
+
+/* ================= LOGO (TOP CENTER) ================= */
+.logo {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+/* ================= BUTTON ROW ================= */
+.nav-links {
+  position: absolute;
+  left: 28px;
+  top: 60px;
+}
+
+.nav-actions {
+  position: absolute;
+  right: 28px;
+  top: 60px;
+}
+
+/* ================= BACK BUTTON ================= */
+.nav-links a {
+  text-decoration: none;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+
+  padding: 10px 18px;
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+
+  transition: all 0.3s ease;
+}
+
+.nav-links a:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateX(-4px);
+}
+
+/* ================= GET STARTED BUTTON (EXTREME RIGHT) ================= */
+.get-started {
+  padding: 10px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+
+  border-radius: 16px;
+  border: 0.5px solid rgba(255, 255, 255, 0.35);
+
+  background: linear-gradient(
+    135deg,
+    rgba(138, 43, 226, 0.65),
+    rgba(138, 43, 226, 0.35)
+  );
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(138, 43, 226, 0.45);
+  transition: all 0.3s ease;
+}
+
+.get-started:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 40px rgba(138, 43, 226, 0.65);
+}
+
+/* ================= HERO SECTION ================= */
+.tips-hero {
+  position: relative;
+  z-index: 1;
+  padding: 120px 20px 40px;
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 12px rgba(0, 0, 0, 0.7);
+}
+
+.hero-title span {
+  color: var(--accent-purple);
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: var(--text-gray);
+  margin-bottom: 60px;
+}
+
+/* ================= GRID ================= */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 25px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ================= GLASS CARDS ================= */
+.tip-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: left;
+
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  transition: all 0.35s ease;
+}
+
+.tip-card:hover {
+  transform: translateY(-10px);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--accent-purple);
+}
+
+/* ================= CARD CONTENT ================= */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.icon-box {
+  width: 45px;
+  height: 45px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Icon Colors */
+.yellow i { color: #ffd700; }
+.blue i { color: #00d4ff; }
+.orange i { color: #ff8c00; }
+.purple i { color: #a855f7; }
+.green i { color: #22c55e; }
+.pink i { color: #ec4899; }
+
+.label {
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  font-weight: bold;
+  color: var(--text-gray);
+}
+
+.tip-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+.tip-card p {
+  color: var(--text-gray);
+  line-height: 1.6;
+}

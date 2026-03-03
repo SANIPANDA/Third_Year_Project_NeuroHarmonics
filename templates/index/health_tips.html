@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mental Wellness Tips | NeuroHarmonics</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='index/tips.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+<div class="video-background">
+  <video autoplay muted loop playsinline poster="https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1771333699/wellness2_1_exbinw.jpg">
+    <source src="https://res.cloudinary.com/dkjp9svlj/video/upload/so_0,eo_5,w_1280,f_auto,q_auto/v1771333699/wellness2_1_exbinw.mp4" type="video/mp4">
+</div>
+
+<header class="navbar glass">
+    <div class="logo">🧠 <span>NeuroHarmonics</span></div>
+    <nav class="nav-links">
+      <a href="{{ url_for('home') }}">← Back</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="get-started" onclick="showLogin()">Get Started</button>
+    </div>
+  </header>
+
+
+  <main class="tips-hero">
+    <h1 class="hero-title">Mental Wellness <span>Tips</span></h1>
+    <p class="subtitle">Science-backed strategies to optimize your brain health.</p>
+
+    <!-- Music Recommendations Section -->
+    <div class="music-section">
+      <h2 class="section-title">{{ time_greeting }}! 🎵</h2>
+      <p class="section-subtitle">We've picked some perfect music for you based on the time of day</p>
+      <div class="video-gallery-grid">
+        {% for music in music_recommendations %}
+           {% set music_url = url_for('static', filename=music.music_path) %}
+           {% set thumb_url = url_for('static', filename=music.thumbnail) %}
+           <div class="video-card" onclick="playMusicCard('{{ music_url }}')">
+          <div class="video-thumb-container">
+                <img class="video-thumb" src="{{ thumb_url }}" alt="{{ music.title }} thumbnail">
+            <button class="play-btn">
+              <i class="fas fa-play"></i>
+            </button>
+          </div>
+          <div class="video-title">{{ music.title }}</div>
+          <div class="video-quote">"{{ music.quote }}"</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Hidden audio element for playing music -->
+    <audio id="recommendationAudio"></audio>
+
+    <div class="video-gallery-grid">
+      {% for v in videos %}
+      <div class="video-card">
+        <div class="video-thumb-container">
+              <img class="video-thumb" src="{{ url_for('static', filename='dashboard/video_thumbs/' ~ v.thumb) }}" alt="{{ v.title }} thumbnail">
+                {% set video_url = url_for('static', filename=v.video_path) %}
+                <button class="play-btn" onclick="playVideo('{{ video_url }}', '{{ v.title }}')">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+        <div class="video-title">{{ v.title }}</div>
+        <div class="video-quote">"{{ v.quote }}"</div>
+        <div class="video-tip">{{ v.tip }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Modal for video playback -->
+    <div id="videoModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modalTitle"></h2>
+        <video id="modalVideo" controls autoplay poster="">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+
+    <!-- Yoga Recommendations Section -->
+    <div class="yoga-section">
+      <h2 class="section-title">Yoga Recommendations for You</h2>
+      <div class="video-gallery-grid">
+        {% for yoga in yoga_recommendations %}
+          {% set yoga_video_url = url_for('static', filename=yoga.video) %}
+          {% set yoga_thumb_url = url_for('static', filename=yoga.thumbnail) %}
+          <div class="video-card" onclick="playYogaVideo('{{ yoga_video_url }}', '{{ yoga.title }}', '{{ yoga_thumb_url }}')">
+            <div class="video-thumb-container">
+              <img class="video-thumb" src="{{ yoga_thumb_url }}" alt="{{ yoga.title }} thumbnail">
+            </div>
+            <div class="video-title">{{ yoga.title }}</div>
+            <div class="video-tip">{{ yoga.description }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Emotional Health Importance Section -->
+    <div class="emotional-health-section">
+      <h2 class="section-title">Why Emotional Health Matters</h2>
+      <div class="importance-cards-grid">
+        <div class="importance-card">
+          <h3>Better Relationships</h3>
+          <p>Emotional health helps you connect, empathize, and communicate effectively.</p>
+        </div>
+        <div class="importance-card">
+          <h3>Resilience</h3>
+          <p>It enables you to bounce back from setbacks and manage stress.</p>
+        </div>
+        <div class="importance-card">
+          <h3>Physical Well-being</h3>
+          <p>Good emotional health reduces risk of chronic diseases and boosts immunity.</p>
+        </div>
+        <div class="importance-card">
+          <h3>Diseases from Neglect</h3>
+          <ul>
+            <li>Depression</li>
+            <li>Anxiety Disorders</li>
+            <li>Heart Disease</li>
+            <li>Sleep Disorders</li>
+            <li>Digestive Problems</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Three.js canvas for visual effect -->
+    <div id="threejs-bg"></div>
+  </main>
+  <script src="{{ url_for('static', filename='music_player.js') }}"></script>
+  <script>
+    function playMusicCard(src) {
+      var audio = document.getElementById('recommendationAudio');
+      if(window.musicPlayer && window.musicPlayer.pause) window.musicPlayer.pause();
+      audio.src = src;
+      audio.play();
+      audio.onended = function() {
+        if(window.musicPlayer && window.musicPlayer.play) window.musicPlayer.play();
+      };
+    }
+  </script>
+</body>
+</html>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Video modal logic
+    function playVideo(src, title) {
+      document.getElementById('modalVideo').src = src;
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('videoModal').style.display = 'block';
+    }
+    function playYogaVideo(src, title, thumb) {
+      document.getElementById('modalVideo').src = src;
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('videoModal').style.display = 'block';
+    }
+    function closeModal() {
+      document.getElementById('videoModal').style.display = 'none';
+      document.getElementById('modalVideo').pause();
+      document.getElementById('modalVideo').src = '';
+    }
+    window.onclick = function(event) {
+      var modal = document.getElementById('videoModal');
+      if (event.target == modal) closeModal();
+    }
+
+    // Subtle Three.js animated background (particles)
+    let scene = new THREE.Scene();
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    let renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('threejs-bg').appendChild(renderer.domElement);
+    camera.position.z = 8;
+    // Create particles
+    let particles = new THREE.Group();
+    let particleMaterial = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.25 });
+    for (let i = 0; i < 80; i++) {
+      let geo = new THREE.SphereGeometry(Math.random() * 0.18 + 0.08, 12, 12);
+      let mesh = new THREE.Mesh(geo, particleMaterial.clone());
+      mesh.position.set(
+        (Math.random() - 0.5) * 16,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 8
+      );
+      mesh.material.opacity = Math.random() * 0.18 + 0.08;
+      particles.add(mesh);
+    }
+    scene.add(particles);
+    function animate() {
+      requestAnimationFrame(animate);
+      particles.rotation.y += 0.0008;
+      particles.rotation.x += 0.0003;
+      renderer.render(scene, camera);
+    }
+    animate();
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+  
+  <script>
+    // Music card player logic
+    function playMusicCard(musicSrc) {
+      // Pause background music
+      if (window.musicPlayer && window.musicPlayer.pauseForOtherMusic) {
+        window.musicPlayer.pauseForOtherMusic();
+      }
+      
+      // Play the selected music
+      const audio = document.getElementById('recommendationAudio');
+      audio.src = musicSrc;
+      audio.play();
+    }
+    
+    function resumeBackgroundMusic() {
+      // Resume background music when recommendation music ends
+      if (window.musicPlayer && window.musicPlayer.resumeAfterOtherMusic) {
+        window.musicPlayer.resumeAfterOtherMusic();
+      }
+    }
+  </script>
+  
+  <script src="{{ url_for('static', filename='index/tips.js') }}"></script>
+  <script src="{{ url_for('static', filename='index/script.js') }}"></script>
+
+<!-- Music Player Script -->
+<script src="{{ url_for('static', filename='music_player.js') }}"></script>
+
+</body>
+</html>

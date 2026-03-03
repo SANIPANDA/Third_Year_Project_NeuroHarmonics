@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroHarmonics – Login</title>
+  <link rel="stylesheet" href="../../static/index/index.css"/>
+</head>
+
+<body>
+<canvas id="neural-bg"></canvas>
+
+  <!-- Header -->
+  <header class="navbar">
+  <div class="logo">
+    🧠 <span>NeuroHarmonics</span>
+  </div>
+  <div class="nav-actions">
+    <a href="{{ url_for('health_tips') }}" class="nav-link">Health Tips</a>
+    <button class="get-started" onclick="showLogin()">Get Started</button>
+  </div>
+
+  
+</header>
+
+<section class="hero reveal">
+  <div class="badge">
+    AI-Powered Emotional Intelligence
+  </div>
+
+  <h1 class="hero-title">NeuroHarmonics</h1>
+
+  <p class="hero-description">
+    Harness the power of AI to understand your emotions through EEG signals
+    and facial analysis. Get personalized wellness recommendations and track
+    your emotional journey.
+  </p>
+</section>
+
+
+<section class="features reveal">
+  <div class="feature-card">
+    <div class="icon">🧠</div>
+    <h3>EEG & Facial Analysis</h3>
+    <p>
+      Detect emotions using advanced EEG signal processing and
+      facial recognition AI.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <div class="icon">🔒</div>
+    <h3>Secure Data Storage</h3>
+    <p>
+      All emotional data is securely stored using encrypted
+      database management.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <div class="icon">✨</div>
+    <h3>Personalized Wellness</h3>
+    <p>
+      AI-generated recommendations tailored to your emotional
+      patterns and needs.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <div class="icon">📊</div>
+    <h3>Trend Reports</h3>
+    <p>
+      Monthly insights to track your emotional journey
+      and mental well-being progress.
+    </p>
+  </div>
+</section>
+
+<section class="testimonials reveal">
+  <h2 class="section-title">Verified <span>User Experiences</span></h2>
+  
+  <div class="testimonial-wrapper">
+    <div class="testimonial-slider" id="testimonialSlider">
+      {% for fb, uname in feedbacks %}
+      <div class="testimonial-card">
+        <div class="rating">
+          {% for _ in range(fb.rating) %}⭐{% endfor %}
+        </div>
+        <p class="feedback-text">"{{ fb.comment }}"</p>
+        <h4 class="user-name">- {{ uname }}</h4>
+      </div>
+      {% endfor %}
+    </div>
+
+    <button class="scroll-arrow" onclick="slideRight()">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</section>
+
+<section class="science-section reveal">
+  <div class="science-content">
+    <h2>The Science Behind <span>the Soul</span></h2>
+    <p class="hero-description">NeuroHarmonics isn't just an app; it's a research-backed ecosystem built on established psychological frameworks.</p>
+    
+    <div class="science-grid">
+      <div class="glass-card">
+        <h3>PERMA Model</h3>
+        <p>We measure well-being through Positive Emotions, Engagement, Relationships, Meaning, and Accomplishment.</p>
+      </div>
+      <div class="glass-card">
+        <h3>Broaden-and-Build</h3>
+        <p>Our tools help you build long-term personal resources like resilience and creativity through positive affect tracking.</p>
+      </div>
+      <div class="glass-card">
+        <h3>EEG Integrity</h3>
+        <p>Data is processed using encrypted pipelines to ensure your neural patterns remain your own.</p>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+  </main>
+
+  <script src="../../static/index/script.js"></script>
+  <script type="module" src="../../static/index/neural-bg.js"></script>
+  <!-- Music Player Script -->
+  <script src="../../static/music_player.js"></script>
+  </main>
+  <!-- Music Player Script -->
+  <script src="../../static/music_player.js"></script>
+  <script>
+    // Sliding panel logic
+    function toggleMusicPanel() {
+      const panel = document.getElementById('music-panel');
+      panel.classList.toggle('open');
+      // Update play/pause icon
+      const btn = document.getElementById('playPauseBtn');
+      btn.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+    }
+    // Update play/pause icon on toggle
+    document.getElementById('playPauseBtn').addEventListener('click', function() {
+      this.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin | NeuroHarmonics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
+</head>
+
+<body>
+
+<main>
+    <section id="dashboard" class="active">
+        <h1>Performance Dashboard</h1>
+        <div class="cards">
+            <div class="card"><h3>Total Users</h3><p id="usersCount">{{ users_count }}</p></div>
+            <div class="card"><h3>EEG Analysis Total</h3><p id="uploadsCount">{{ analysis_count }}</p></div>
+            <div class="card"><h3>System Status</h3><p id="alertsCount">Optimal</p></div>
+        </div>
+        <div id="three-performance-container" class="three-box"></div>
+    </section>
+
+    <section id="users">
+        <h1>User Management</h1>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Username</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="userTable">
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td><span class="status-dot {{ user.status }}"></span> {{ user.status }}</td>
+                        <td><button onclick="viewData('{{ user.id }}')">Report</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="recommend">
+        <h1>Update Wellness Logic</h1>
+        <p>Modify recommendations sent to users based on detected emotions.</p>
+        <div class="form-group">
+            <label>Detected Emotion:</label>
+            <select id="emotion">
+                <option value="Happy">Happy</option>
+                <option value="Sad">Sad</option>
+                <option value="Anxious">Anxious</option>
+            </select>
+            <textarea id="content" placeholder="Enter new AI tip here..."></textarea>
+            <button class="primary-btn" onclick="saveRecommendation()">Update Supabase</button>
+        </div>
+    </section>
+
+    <section id="logs">
+        <h1>Customer Inquiries</h1>
+        <div class="log-container">
+            {% for msg in messages %}
+            <div class="log-item">
+                <strong>{{ msg.name }}:</strong> {{ msg.message }}
+                <button onclick="replyTo('{{ msg.id }}')">Reply</button>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='admin/admin.js') }}"></script>
+</body>
+</html>
+<!-- Music Player Script -->
+<script src="{{ url_for('static', filename='music_player.js') }}"></script>

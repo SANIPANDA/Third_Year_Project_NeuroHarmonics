@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal | NeuroHarmonics</title>
+    <link rel="stylesheet" href="../../static/index/index.css">
+</head>
+<body class="admin-portal">
+    <canvas id="neural-bg"></canvas>
+
+    <div class="admin-center-wrapper">
+        <div class="auth-card glassmorphism">
+            <h2>Administrator Access</h2>
+            <div class="form">
+                <label>Admin Username</label>
+                <input type="text" id="adminUsername" placeholder="Enter username" required>
+                
+                <label>Security Password</label>
+                <input type="password" id="adminPassword" placeholder="Enter password" required>
+                
+                <button class="primary-btn" onclick="submitAdminAuth()">
+                    Verify Identity →
+                </button>
+            </div>
+            <a href="/login" class="back-to-user">← Return to User Login</a>
+        </div>
+    </div>
+
+    <script src="../../static/index/script.js"></script>
+    <script type="module" src="../../static/index/neural-bg.js"></script>
+</body>
+</html>
