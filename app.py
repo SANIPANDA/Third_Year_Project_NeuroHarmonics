@@ -10,21 +10,20 @@ from models import db, Feedback, ContactMessage, User, CommunityMessage, Admin
 from auth_routes import auth
 from admin_routes import admin 
 from datetime import datetime
-
+from supabase import create_client, Client
+from werkzeug.utils import secure_filename
 
 # --- database utilities ------------------------------------------------
 
+SUPABASE_URL = "https://rlbpjxrwgsurkbbtfyqy.supabase.co" 
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsYnBqeHJ3Z3N1cmtiYnRmeXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNzkyMTEsImV4cCI6MjA4Nzc1NTIxMX0.fSiYOkbSjP7JsZGxNlT0J5sXmUuxrz2c-iiuCvjSNA0"
+supabase_storage: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 def get_database_uri():
-    """
-    Returns the Supabase PostgreSQL connection string.
-    Note: Connection will be established when first query runs.
-    """
     uri = "postgresql://postgres:06kingbeast_2328@db.rlbpjxrwgsurkbbtfyqy.supabase.co:5432/postgres"
     try:
-        # 3. Remove connect_args from here to stop the TypeError
         engine = sqlalchemy.create_engine(uri)
         print("Database URI initialized.")
-        # Just a quick check, don't let it hang the whole app
         return uri
     except Exception as e:
         print(f"Database connection error: {e}")
@@ -40,9 +39,14 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 
-# Register blueprints
 app.register_blueprint(auth)
 app.register_blueprint(admin)
+
+UPLOAD_FOLDER = 'static/uploads/profiles'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create the folder if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- Routes ---
 
@@ -87,7 +91,8 @@ def dashboard():
         personal_inquiries = []
     if not user:
         return redirect("/login")
-    return render_template("dashboard/dashboard.html", 
+    return render_template("dashboard/dashboard.html",
+                           user=user, 
                            username=user.username, 
                            community_messages=messages,
                            inquiries=personal_inquiries) # Passing new data here
@@ -244,6 +249,55 @@ def reply_message():
     except OperationalError as e:
         logging.error(f"Database error in reply_message: {e}")
         return jsonify({"success": False, "message": "Database unavailable"}), 503
+
+@app.route('/update-profile', methods=['POST'])
+def update_profile():
+    new_name = request.form.get('username')
+    user_id = session.get('user_id')
+    photo = request.files.get('profile-photo')
+
+    if not user_id:
+        return jsonify({"success": False, "error": "Session expired. Please log in again."}), 401
+
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found."}), 404
+
+        # 1. Update Username
+        if new_name:
+            user.username = new_name
+            session['username'] = new_name
+
+        # 2. Update Profile Photo
+       # Update Photo in Supabase Storage
+        if photo and photo.filename != '':
+            # 1. Create a unique path in the bucket
+            file_ext = os.path.splitext(photo.filename)[1]
+            storage_path = f"avatars/user_{user_id}{file_ext}"
+            
+            # 2. Read file content
+            file_content = photo.read()
+            
+            # 3. Upload to Supabase Bucket 'avatars'
+            # Note: Ensure you created a PUBLIC bucket named 'avatars' in Supabase first
+            supabase_storage.storage.from_('avatars').upload(
+                path=storage_path,
+                file=file_content,
+                file_options={"upsert": "true", "content-type": photo.content_type}
+            )
+            
+            # 4. Get Public URL and save to SQLAlchemy Database
+            public_url = supabase_storage.storage.from_('avatars').get_public_url(storage_path)
+            user.avatar = public_url
+
+        db.session.commit()
+        return jsonify({"success": True})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Update Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     print("Database URI configured. The app will connect to the database on first use.")

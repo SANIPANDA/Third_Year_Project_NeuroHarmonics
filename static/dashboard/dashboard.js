@@ -1,64 +1,104 @@
+// --- 1. CORE NAVIGATION & UI TOGGLES ---
 
+document.addEventListener('DOMContentLoaded', () => {
+    // This ensures the button is found only after the HTML is ready
+    const menuToggle = document.querySelector('#menu-toggle');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (menuToggle && navLinks) {
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+    }
+
+    // Initialize the profile modal logic
+    initProfileModal();
+});
+
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const icon = document.querySelector('.menu-toggle i');
+    if (!sidebar) return;
+
+    sidebar.classList.toggle('active');
+    
+    // Switch between bars and X icon
+    if (icon) {
+        if (sidebar.classList.contains('active')) {
+            icon.classList.replace('fa-bars', 'fa-times');
+        } else {
+            icon.classList.replace('fa-times', 'fa-bars');
+        }
+    }
+}
 
 function showSection(sectionId, el) {
-    // 1. Hide all sections
+    // Hide all sections
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => {
         section.style.display = 'none';
     });
 
-    // 2. Show the selected section
-    document.getElementById(sectionId).style.display = 'block';
+    // Show selected section
+    const target = document.getElementById(sectionId);
+    if (target) target.style.display = 'block';
 
-    // 3. Update active button state
+    // Update active tab styling
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.remove('active');
     });
-    if (el) {
-        el.classList.add('active');
-    }
+    if (el) el.classList.add('active');
 }
 
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    if (!sidebar) return;
-    sidebar.classList.toggle('open');
-}
+// --- 2. SETTINGS & PROFILE MANAGEMENT ---
 
 function openSettingsModal() {
     const modal = document.getElementById('settings-modal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-    document.body.classList.add('modal-open');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
 }
 
 function closeSettingsModal() {
     const modal = document.getElementById('settings-modal');
-    if (!modal) return;
-    modal.style.display = 'none';
-    document.body.classList.remove('modal-open');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
 }
 
 function saveProfile(event) {
-    if (event) event.preventDefault();
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation(); // Prevents clicking "through" the modal
+    }
+
     const form = document.getElementById('profile-form');
     if (!form) return;
+
     const formData = new FormData(form);
+    
+    // Debug: Check if 'username' is actually caught
+    console.log("Name being sent:", formData.get('username'));
 
     fetch('/update-profile', {
         method: 'POST',
         body: formData
     })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                closeSettingsModal();
-                window.location.reload();
-            } else {
-                alert(data.error || 'Failed to update profile.');
-            }
-        })
-        .catch(() => alert('Server error.'));
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeSettingsModal();
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to update profile.');
+        }
+    })
+    .catch(err => {
+        console.error("Save error:", err);
+        alert('Server error.');
+    });
 }
 
 function initProfileModal() {
@@ -66,199 +106,104 @@ function initProfileModal() {
     const photoInput = document.getElementById('profile-photo');
     const uploadBtn = document.querySelector('.upload-btn');
     const dropArea = document.getElementById('photo-drop-area');
+    const previewImg = document.getElementById('preview-photo');
 
     if (form) {
+        // Safe removal and addition
+        form.removeEventListener('submit', saveProfile); 
         form.addEventListener('submit', saveProfile);
     }
 
     if (uploadBtn && photoInput) {
-        uploadBtn.addEventListener('click', () => photoInput.click());
+        uploadBtn.onclick = () => photoInput.click(); // Using .onclick avoids duplicate listeners
     }
 
     if (photoInput) {
-        photoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                const img = document.getElementById('preview-photo');
-                if (img) img.src = ev.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
+        photoInput.onchange = (e) => handleFilePreview(e.target.files[0]);
     }
 
+    // Drag and Drop (kept your good logic)
     if (dropArea && photoInput) {
-        dropArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropArea.classList.add('drag-over');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropArea.addEventListener(evt, (e) => e.preventDefault());
         });
-        dropArea.addEventListener('dragleave', () => {
-            dropArea.classList.remove('drag-over');
-        });
+
+        dropArea.addEventListener('dragover', () => dropArea.classList.add('drag-over'));
+        dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+
         dropArea.addEventListener('drop', (e) => {
-            e.preventDefault();
             dropArea.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
-            if (!file) return;
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            photoInput.files = dataTransfer.files;
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                const img = document.getElementById('preview-photo');
-                if (img) img.src = ev.target.result;
-            };
-            reader.readAsDataURL(file);
+            if (file && file.type.startsWith('image/')) {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                photoInput.files = dataTransfer.files;
+                handleFilePreview(file);
+            }
         });
     }
+
+    function handleFilePreview(file) {
+        if (!file || !previewImg) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { previewImg.src = ev.target.result; };
+        reader.readAsDataURL(file);
+    }
 }
-
-document.addEventListener('DOMContentLoaded', initProfileModal);
-
-
+// --- 3. ANALYSIS & UTILITIES ---
 
 async function analyzeData() {
     const fileInput = document.getElementById("eegFile");
     const resultBox = document.getElementById("result");
-
-    if (!fileInput.files.length) {
+    if (!fileInput || !fileInput.files.length) {
         alert("Please upload an EEG file first");
         return;
-        }
-
-const file = fileInput.files[0];
-
-const formData = new FormData();
-formData.append("eeg", file);
-
-resultBox.innerText = "Analyzing...";
-
-try {
-    const response = await fetch("http://127.0.0.1:5000/analyze", {
-    method: "POST",
-    body: formData
-    });
-
-const data = await response.json();
-
-if (data.error) {
-    resultBox.innerText = data.error;
-    return;
     }
 
-resultBox.innerHTML =
-`<b style="color:green">
-${data.emotion} (${Math.round(data.confidence * 100)}%)
-</b>`;
+    const formData = new FormData();
+    formData.append("eeg", fileInput.files[0]);
+    resultBox.innerText = "Analyzing...";
 
-} catch (error) {
-    console.error(error);
-    resultBox.innerText = "Server error";
+    try {
+        const response = await fetch("http://127.0.0.1:5000/analyze", { method: "POST", body: formData });
+        const data = await response.json();
+        if (data.error) resultBox.innerText = data.error;
+        else resultBox.innerHTML = `<b style="color:green">${data.emotion} (${Math.round(data.confidence * 100)}%)</b>`;
+    } catch (error) {
+        resultBox.innerText = "Server error";
     }
 }
 
+function handleEEGFile() {
+    const input = document.getElementById("eegFile");
+    const fileNameEl = document.getElementById("file-name");
+    if (!input || !input.files[0]) return;
+
+    const file = input.files[0];
+    const allowedTypes = ["edf", "csv", "txt"];
+    const fileExt = file.name.split(".").pop().toLowerCase();
+
+    if (!allowedTypes.includes(fileExt)) {
+        alert("Invalid file type!");
+        input.value = "";
+        return;
+    }
+    fileNameEl.innerText = "Selected: " + file.name;
+}
 
 function logout() {
     localStorage.removeItem("loggedIn");
     window.location.href = "/";
 }
 
-
-function handleEEGFile() {
-    const input = document.getElementById("eegFile");
-    const file = input.files[0];
-    const fileNameEl = document.getElementById("file-name");
-
-    if (!file) {
-        fileNameEl.innerText = "";
-        return;
-        }
-
-    const allowedTypes = ["edf", "csv", "txt"];
-    const fileExt = file.name.split(".").pop().toLowerCase();
-
-    if (!allowedTypes.includes(fileExt)) {
-        alert("Invalid file type! Only .edf, .csv, .txt allowed.");
-        input.value = "";
-        fileNameEl.innerText = "";
-        return;
-        }
-
-fileNameEl.innerText = "Selected: " + file.name;
-}
-
-// --- NEW: Handle Feedback Submission ---
-async function submitFeedback(event) {
-    event.preventDefault(); // Stop the page from refreshing
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('.submit-btn');
-
-    submitBtn.innerText = "Sending...";
-    submitBtn.disabled = true;
-
-    try {
-        const response = await fetch("/submit-feedback", {
-            method: "POST",
-            body: formData
-        });
-
-        if (response.ok) {
-            alert("Thank you for your feedback!");
-            form.reset(); // Clear the form
-        } else {
-            alert("Failed to send feedback. Please try again.");
-        }
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Server error. Check your connection.");
-    } finally {
-        submitBtn.innerText = "Send Feedback";
-        submitBtn.disabled = false;
-    }
-}
-
-// --- NEW: Handle Support Message Submission ---
-async function sendSupportMessage(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('.submit-btn');
-
-    submitBtn.innerText = "Sending Message...";
-    submitBtn.disabled = true;
-
-    try {
-        const response = await fetch("/send-message", {
-            method: "POST",
-            body: formData
-        });
-
-        if (response.ok) {
-            alert("Message sent! Our team will get back to you soon.");
-            form.reset();
-        } else {
-            alert("Failed to send message.");
-        }
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Connection error.");
-    } finally {
-        submitBtn.innerText = "Send Message";
-        submitBtn.disabled = false;
-    }
-}
+// --- 4. COMMUNITY & FEEDBACK ---
 
 async function postToCommunity() {
     const input = document.getElementById("community-input");
     const chatBox = document.getElementById("chat-box");
+    if (!input || !input.value.trim()) return;
+
     const content = input.value;
-
-    if (!content.trim()) return;
-
     try {
         const response = await fetch("/post-community", {
             method: "POST",
@@ -266,47 +211,13 @@ async function postToCommunity() {
             body: JSON.stringify({ message: content })
         });
 
-        const data = await response.json();
-
         if (response.ok) {
-            // OPTION A: Add the message to the screen immediately without reloading
             const newMsg = document.createElement('div');
             newMsg.className = 'message';
-            newMsg.innerHTML = `
-                <span class="msg-user"><strong>You:</strong></span>
-                <span class="msg-content">${content}</span>
-                <small class="msg-time">Just now</small>
-            `;
+            newMsg.innerHTML = `<span class="msg-user"><strong>You:</strong></span> <span class="msg-content">${content}</span>`;
             chatBox.appendChild(newMsg);
-            
-            // Auto-scroll to the bottom
             chatBox.scrollTop = chatBox.scrollHeight;
-            
-            input.value = ""; // Clear the input field
+            input.value = "";
         }
-    } catch (error) {
-        console.error("Chat error:", error);
-    }
-}
-
-function launchGame(gameName) {
-    if (gameName === 'space_invaders') {
-        fetch('/launch-game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ game: 'space_invaders' })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Launching Space Invaders... Enjoy the game!');
-            } else {
-                alert('Error: ' + (data.error || 'Could not launch game'));
-            }
-        })
-        .catch(error => {
-            console.error('Error launching game:', error);
-            alert('Error launching game. Please try again.');
-        });
-    }
+    } catch (error) { console.error("Chat error:", error); }
 }

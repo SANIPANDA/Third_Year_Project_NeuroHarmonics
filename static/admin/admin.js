@@ -68,6 +68,12 @@ async function saveRecommendation() {
 
 // Function to handle tab switching (if you add tabs later)
 function showSection(sectionId) {
-    document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
-    document.getElementById(sectionId).classList.add('active');
+    // Your existing logic to show sections...
+    
+    // Add this to close the sidebar after selection
+    const sidebar = document.querySelector('.sidebar');
+    if (window.innerWidth < 1100) { // Only auto-close on smaller screens if desired
+        sidebar.classList.remove('active');
+        document.querySelector('.menu-toggle i').className = 'fas fa-bars';
+    }
 }

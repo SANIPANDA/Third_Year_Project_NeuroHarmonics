@@ -44,7 +44,7 @@
             <div class="user-profile">
                 <div class="avatar">
                     {% if user.avatar %}
-                        <img src="{{ url_for('static', filename=user.avatar) }}" alt="Profile Picture" class="profile-pic" />
+                        <img src="{{ user.avatar }}" alt="Profile Picture" class="profile-pic" />
                     {% else %}
                         <img src="https://api.dicebear.com/7.x/identicon/svg?seed={{ user.username or 'user' }}" alt="Profile Picture" class="profile-pic" />
                     {% endif %}
@@ -92,14 +92,14 @@
             <div class="glass-card" style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
                 <div class="avatar" style="margin-bottom:0;">
                     {% if user.avatar %}
-                        <img src="{{ url_for('static', filename=user.avatar) }}" alt="Profile Picture" class="profile-pic" />
+                        <img src="{{ user.avatar }}" alt="Profile Picture" class="profile-pic" />
                     {% else %}
                         <img src="https://api.dicebear.com/7.x/identicon/svg?seed={{ user.username or 'user' }}" alt="Profile Picture" class="profile-pic" />
                     {% endif %}
                 </div>
                 <div>
-                    <h1 class="welcome-text" style="margin:0;">Hello, <span>{{ user.username or 'Guest User' }}</span></h1>
-                    <p class="subtitle" style="margin-top:6px;">Here's your neural performance overview.</p>
+                    <h2 style="margin:0;">{{ user.username }}</h2>
+                    <p style="margin:0;opacity:0.7;">Student at Banasthali Vidyapith</p>
                 </div>
             </div>
 
@@ -424,63 +424,62 @@
 
     </main>
     <!-- Settings Modal -->
-    <div id="settings-modal" class="settings-modal" style="display:none;">
-      <div class="settings-modal-content glass-card">
-        <span class="close-btn" onclick="closeSettingsModal()">&times;</span>
-        <h2>Edit Profile</h2>
+   <div id="settings-modal" class="settings-modal" style="display:none;">
+  <div class="settings-modal-content glass-card">
+    <span class="close-btn" onclick="closeSettingsModal()">&times;</span>
+    <h2>Edit Profile</h2>
 
-        <!-- Single, clean form: textbox + submit button -->
-        <form id="profile-form" enctype="multipart/form-data" onsubmit="saveProfile(event)">
-          <div class="profile-edit-section">
-            <label for="profile-photo">Profile Photo</label>
+    <form id="profile-form" enctype="multipart/form-data" action="/update-profile" method="POST">
+      
+      <div class="profile-edit-section">
+        <label>Profile Photo</label>
 
-            <div class="photo-drop-area" id="photo-drop-area">
-              <img
-                id="preview-photo"
-                src="{% if user.avatar %}{{ url_for('static', filename=user.avatar) }}{% else %}https://api.dicebear.com/7.x/identicon/svg?seed={{ user.username or 'user' }}{% endif %}"
-                class="profile-pic"
-                style="width:80px;height:80px;"
-              />
+        <div class="photo-drop-area" id="photo-drop-area">
+          <img
+            id="preview-photo"
+            src="{% if user.avatar %}{{ url_for('static', filename=user.avatar) }}{% else %}https://api.dicebear.com/7.x/identicon/svg?seed={{ user.username or 'user' }}{% endif %}"
+            class="profile-pic"
+            style="width:80px;height:80px;object-fit:cover;border-radius:50%;"
+          />
 
-              <input
-                type="file"
-                id="profile-photo"
-                name="profile-photo"
-                accept="image/*"
-                style="display:none;"
-              />
+          <input
+            type="file"
+            id="profile-photo"
+            name="profile-photo"
+            accept="image/*"
+            style="display:none;"
+          />
 
-              <button
-                type="button"
-                class="upload-btn"
-                onclick="document.getElementById('profile-photo').click()"
-              >
-                Browse
-              </button>
-
-              <span class="drag-text">or drag & drop</span>
-            </div>
-          </div>
-
-          <div class="profile-edit-section">
-            <label for="username">Name</label>
-
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value="{{ user.username or 'Guest User' }}"
-              class="edit-name-input"
-              required
-            />
-          </div>
-
-          <button type="submit" class="submit-btn">
-            Save Changes
+          <button
+            type="button"
+            class="upload-btn"
+          >
+            Browse
           </button>
-        </form>
+
+          <span class="drag-text">or drag & drop</span>
+        </div>
       </div>
-    </div>
+
+      <div class="profile-edit-section">
+        <label for="username">Name</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          value="{{ user.username or 'Guest User' }}"
+          class="edit-name-input"
+          placeholder="Enter your name"
+          required
+        />
+      </div>
+
+      <button type="submit" class="submit-btn">
+        Save Changes
+      </button>
+    </form>
+  </div>
+</div>
 
     <script src="{{ url_for('static', filename='dashboard/dashboard.js') }}"></script>
 </body>

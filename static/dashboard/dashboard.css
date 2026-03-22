@@ -259,11 +259,12 @@ body.portal-body::after {
 /* ================= MAIN CONTENT ================= */
 
 .main-content {
-    margin-left: 280px;
-    padding: 60px;
-    width: calc(100% - 280px);
+    margin-left: 0; /* Remove the fixed margin */
+    width: 100%;
+    padding: 80px 40px 40px 40px; /* Add top padding for the toggle button */
     box-sizing: border-box;
     min-height: 100vh;
+    transition: margin-left 0.4s ease;
 
     display: flex;
     flex-direction: column;
@@ -271,6 +272,16 @@ body.portal-body::after {
 }
 
 /* ================= SIDEBAR ================= */
+/* Hidden by default on mobile */
+.nav-links {
+    display: none;
+    flex-direction: column;
+}
+
+/* When the JS toggles this class, they appear */
+.nav-links.active {
+    display: flex;
+}
 
 .sidebar {
     position: fixed;
@@ -280,36 +291,46 @@ body.portal-body::after {
     height: 100vh;
     padding: 30px 20px;
     box-sizing: border-box;
-
     display: flex;
     flex-direction: column;
-
     background: linear-gradient(180deg, var(--sidebar-bg) 0%, #1a0b2e 100%);
     border-right: 1px solid var(--neuron-line);
     box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    z-index: 1200; /* Higher than toggle */
+    
+    /* ADD THIS: Hidden by default */
+    transform: translateX(-100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.active {
+    transform: translateX(0);
 }
 
 /* Mobile menu toggle button */
 .menu-toggle {
     position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 1100;
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    border: none;
-    background: rgba(25,12,45,0.9);
-    color: #ffffff;
-    display: none;
+    top: 20px;
+    left: 20px;
+    z-index: 1300; /* Always on top */
+    width: 45px;
+    height: 45px;
+    border-radius: 10px;
+    border: 1px solid var(--neuron-line);
+    background: rgba(26, 11, 46, 0.8);
+    backdrop-filter: blur(10px);
+    color: var(--accent-purple);
+    display: flex; /* Changed from 'none' to 'flex' */
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
     cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.menu-toggle i {
-    font-size: 1.2rem;
+.menu-toggle:hover {
+    background: var(--accent-purple);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-purple);
 }
 
 /* Logo */
@@ -372,7 +393,7 @@ body.portal-body::after {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
+    width: fit-content;
     padding: 12px;
     margin-top: 10px;
     color: #a855f7;
@@ -397,22 +418,31 @@ body.portal-body::after {
     width: 100vw;
     height: 100vh;
     background: rgba(22, 10, 41, 0.45);
-    z-index: 1000;
-    display: flex;
+    z-index: 9999;
+    display: none;
     align-items: center;
     justify-content: center;
     animation: fadeInModal 0.4s;
+    pointer-events: auto;
 }
 .settings-modal-content {
-    min-width: 340px;
-    max-width: 420px;
-    padding: 32px 24px;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(157,78,221,0.25);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
     position: relative;
-    background: rgba(25, 12, 45, 0.9);
-    border: 1px solid var(--neuron-line);
+    
+    /* Ensure the card itself is interactive */
+    z-index: 10000;
+    pointer-events: auto !important; 
+    
+    /* Basic styling to make sure it's visible */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
+
 .close-btn {
     position: absolute;
     top: 12px;
@@ -574,8 +604,8 @@ body.modal-open {
     align-items: center;
     justify-content: center;
     gap: 12px;
-    width: 100%;
-    padding: 12px;
+    width: fit-content;
+    padding: 8px 16px;
     margin-top: 15px;
 
     color: #ff5f5f;
@@ -747,16 +777,6 @@ body.modal-open {
 
 @media (max-width: 1100px) {
 
-    .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 30px;
-    }
-
-    .sidebar {
-        transform: translateX(-100%);
-        transition: 0.4s;
-    }
 
     .sidebar.open {
         transform: translateX(0);
@@ -786,4 +806,23 @@ body.modal-open {
 ::-webkit-scrollbar-thumb {
     background: linear-gradient(var(--accent-purple), #5a189a);
     border-radius: 20px;
+}
+
+#settings-modal input[type="text"] {
+    position: relative;
+    z-index: 10005 !important; /* Move it even further forward */
+    pointer-events: auto !important;
+}
+
+.submit-btn, 
+#profile-form button {
+    position: relative !important;
+    z-index: 10010 !important; /* Higher than the input fields */
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+#profile-form {
+    position: relative;
+    z-index: 10005;
 }
