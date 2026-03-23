@@ -437,7 +437,7 @@
         <div class="photo-drop-area" id="photo-drop-area">
           <img
             id="preview-photo"
-            src="{% if user.avatar %}{{ url_for('static', filename=user.avatar) }}{% else %}https://api.dicebear.com/7.x/identicon/svg?seed={{ user.username or 'user' }}{% endif %}"
+            src="{% if user.avatar %}{{ user.avatar }}{% else %}https://api.dicebear.com/7.x/identicon/svg?seed={{ user.username or 'user' }}{% endif %}"
             class="profile-pic"
             style="width:80px;height:80px;object-fit:cover;border-radius:50%;"
           />
