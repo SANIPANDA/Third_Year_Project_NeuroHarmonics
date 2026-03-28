@@ -5,7 +5,7 @@ db = SQLAlchemy()
 
 
 class User(db.Model):
-    __tablename__ = "user"  # matches Supabase table name
+    __tablename__ = "user"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), nullable=False)
@@ -14,9 +14,10 @@ class User(db.Model):
 
     role = db.Column(db.String(20), default="user")
     status = db.Column(db.String(20), default="active")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     avatar = db.Column(db.Text, nullable=True)
-
 
 class Recommendation(db.Model):
     __tablename__ = "recommendation"
@@ -81,7 +82,7 @@ class EmotionLog(db.Model):
 
 class Admin(db.Model):
     __tablename__ = 'admins'  # Ensure this matches Supabase exactly (plural vs singular)
-    id = db.Column(db.Integer, primary_key=True)
+    admin_id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     # track last login so we can audit admin access

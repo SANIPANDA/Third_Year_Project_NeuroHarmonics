@@ -29,6 +29,30 @@
     <h1 class="hero-title">Mental Wellness <span>Tips</span></h1>
     <p class="subtitle">Science-backed strategies to optimize your brain health.</p>
 
+<section class="featured-tip-container" style="padding: 40px 5%; max-width: 1200px; margin: 0 auto;">
+    <div class="tip-card-glass" style="display: flex; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; overflow: hidden; min-height: 400px;">
+        
+        <div class="tip-image" style="flex: 1; background: url('{{ tip.image }}') center/cover no-repeat;">
+            </div>
+        
+        <div class="tip-content" style="flex: 1.2; padding: 60px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="color: #a855f7; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">
+                {{ greeting }}
+            </div>
+            <h2 style="font-size: 2rem; color: #fff; line-height: 1.4; margin-bottom: 25px;">
+                "{{ tip.text }}"
+            </h2>
+            
+            <button onclick="window.location.reload()" class="action-btn" 
+                style="width: fit-content; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff; padding: 12px 25px; border-radius: 50px; cursor: pointer; transition: 0.3s;"
+                onmouseover="this.style.boxShadow='0 0 20px rgba(168, 85, 247, 0.5)';"
+                onmouseout="this.style.boxShadow='none';">
+                <i class="fas fa-sync-alt" style="margin-right: 10px;"></i> Get Another Insight
+            </button>
+        </div>
+    </div>
+</section>
+
     <!-- Music Recommendations Section -->
     <div class="music-section">
       <h2 class="section-title">{{ time_greeting }}! 🎵</h2>

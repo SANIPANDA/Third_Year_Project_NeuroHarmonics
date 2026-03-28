@@ -826,3 +826,22 @@ body.modal-open {
     position: relative;
     z-index: 10005;
 }
+
+.feedback-form input, 
+.feedback-form textarea, 
+.contact-form input, 
+.contact-form textarea {
+    position: relative;
+    z-index: 120;
+    pointer-events: auto !important;
+    cursor: text; /* Forces the typing cursor to appear */
+    background: rgba(255, 255, 255, 0.05); /* Ensure it's not invisible */
+    color: white;
+}
+
+.submit-btn {
+    position: relative;
+    z-index: 120;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}

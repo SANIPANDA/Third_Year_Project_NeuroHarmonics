@@ -13,6 +13,13 @@ from datetime import datetime
 from supabase import create_client, Client
 from werkzeug.utils import secure_filename
 
+from google import genai
+
+import random
+
+# Setup Gemini (Use an Environment Variable for the API Key!)
+client = genai.Client(api_key="AIzaSyAHNxqL07XaIfR_Xk3xiEvTzr86kYtTyIA")
+
 # --- database utilities ------------------------------------------------
 
 SUPABASE_URL = "https://rlbpjxrwgsurkbbtfyqy.supabase.co" 
@@ -95,12 +102,29 @@ def dashboard():
                            user=user, 
                            username=user.username, 
                            community_messages=messages,
-                           inquiries=personal_inquiries) # Passing new data here
+                           inquiries=personal_inquiries)
 
 
 @app.route("/health-tips")
 def health_tips():
-    return render_template("index/health_tips.html")
+    hour = datetime.now().hour
+    
+    # Identify time period
+    if 5 <= hour < 12:
+        period, greeting = "morning", "Good Morning"
+    elif 12 <= hour < 17:
+        period, greeting = "afternoon", "Good Afternoon"
+    elif 17 <= hour < 21:
+        period, greeting = "evening", "Good Evening"
+    else:
+        period, greeting = "night", "Good Night"
+
+    # Select a random tip from that period
+    selected_tip = random.choice(WELLNESS_DATA[period])
+
+    return render_template("index/health_tips.html", 
+                           greeting=greeting, 
+                           tip=selected_tip)
 
 @app.route("/logout")
 def logout():
@@ -126,20 +150,43 @@ def submit_feedback():
     if 'username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
+    # Using .first() is good practice here
     user = User.query.filter_by(username=session['username']).first()
-    rating = request.form.get('rating')
+    
+    # Get form data
+    rating_raw = request.form.get('rating')
     comment = request.form.get('comment')
     
-    if user:
-        try:
-            new_feedback = Feedback(user_id=user.id, rating=rating, comment=comment)
-            db.session.add(new_feedback)
-            db.session.commit()
-            return jsonify({"success": True})
-        except OperationalError as e:
-            logging.error(f"Database write failed in submit_feedback: {e}")
-            return jsonify({"error": "Database unavailable"}), 503
-    return jsonify({"error": "User not found"}), 404
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    if not rating_raw:
+        return jsonify({"error": "Rating is required"}), 400
+
+    try:
+        # Convert rating to integer before saving to Supabase
+        rating_int = int(rating_raw)
+        
+        new_feedback = Feedback(
+            user_id=user.id, 
+            rating=rating_int, 
+            comment=comment
+        )
+        
+        db.session.add(new_feedback)
+        db.session.commit()
+        return jsonify({"success": True})
+
+    except ValueError:
+        return jsonify({"error": "Invalid rating format"}), 400
+    except OperationalError as e:
+        db.session.rollback() # Always rollback on failure
+        logging.error(f"Database write failed: {e}")
+        return jsonify({"error": "Database unavailable"}), 503
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Unexpected error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/send-message', methods=['POST'])
 def send_message():
@@ -298,6 +345,124 @@ def update_profile():
         db.session.rollback()
         print(f"Update Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+    
+# WELLNESS_DATA stores your curated tips and Cloudinary links
+WELLNESS_DATA = {
+    "morning": [
+        {
+            "text": "Early sunlight exposure for 10 minutes resets your circadian rhythm, optimizing your internal clock for better sleep tonight.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650915/morning_sun_igwaee.png"
+        },
+        {
+            "text": "Hydrating with 500ml of water before your first caffeine intake jumpstarts neural clarity and flushes metabolic waste.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650921/morning_water_vkpcum.png"
+        },
+        {
+            "text": "Prioritizing high-protein intake in your first meal provides the amino acids necessary for neurotransmitter production and steady focus.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650927/morning_protien_sv2vmk.png"
+        }
+    ],
+    "afternoon": [
+        {
+            "text": "A 20-minute power nap between 1 PM and 3 PM can drastically improve memory consolidation and creative problem-solving.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650949/afternoon_rest_myqh1h.png"
+        },
+        {
+            "text": "Applying the 20-20-20 rule—looking at something 20 feet away for 20 seconds every 20 minutes—prevents digital eye strain and mental fatigue.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650958/afternoon_focus_ivkncv.png"
+        },
+        {
+            "text": "A quick 10-minute walk outdoors can reset your prefrontal cortex, boosting your decision-making capacity for the rest of the day.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650962/afternoon_walk_cwrztl.png"
+        }
+    ],
+    "evening": [
+        {
+            "text": "Dimming environmental lights 2 hours before bed triggers the natural release of melatonin, signaling your brain to prepare for recovery.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/evening_calm"
+        },
+        {
+            "text": "Engaging in light, low-impact stretching helps lower cortisol levels and releases physical tension accumulated throughout the day.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/evening_stretch"
+        },
+        {
+            "text": "Practicing 'Digital Sunset'—turning off notifications an hour before bed—reduces cognitive load and prevents sleep-disrupting dopamine spikes.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/evening_digital_fast"
+        }
+    ],
+    "night": [
+        {
+            "text": "Maintaining a bedroom temperature of 18°C (65°F) is scientifically proven to facilitate the transition into deep, restorative REM sleep.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/night_sleep"
+        },
+        {
+            "text": "Practicing deep rhythmic breathing (4-7-8 method) activates the parasympathetic nervous system, effectively quieting a racing mind.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/night_breath"
+        },
+        {
+            "text": "Writing a 'Brain Dump' list of tomorrow's tasks clears working memory, allowing the brain to enter a deeper state of relaxation.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/night_journal"
+        }
+    ]
+}
+    
+def get_exercise_recommendation(dominant_frequency, predicted_mood):
+    """
+    Inputs: 
+    - dominant_frequency: (e.g., 'Alpha', 'Beta', 'Theta', 'Delta')
+    - predicted_mood: (e.g., 'Anxious', 'Focused', 'Fatigued')
+    """
+    
+    # This prompt forces the AI to act as a Neuro-Fitness Expert
+    prompt = (
+        f"Context: User EEG shows dominant {dominant_frequency} waves. "
+        f"Mood state is {predicted_mood}. "
+        "Task: Recommend one physical exercise that helps optimize this neural state. "
+        "Rules: \n"
+        "1. If Beta/Anxious, suggest grounding/rhythmic movement.\n"
+        "2. If Theta/Fatigued, suggest alert-increasing movement.\n"
+        "3. If Alpha/Neutral, suggest flow-state activities.\n"
+        "Format: Exercise Name | Neuro-Benefit (max 15 words) | SearchKeyword"
+    )
+
+    try:
+        response = client.models.generate_content(prompt)
+        parts = response.text.split('|')
+        return {
+            "name": parts[0].strip(),
+            "benefit": parts[1].strip(),
+            "keyword": parts[2].strip()
+        }
+    except Exception as e:
+        print(f"API Error: {e}")
+        return {"name": "Brisk Walking", "benefit": "Stabilizes heart rate and brain activity.", "keyword": "walking"}
+
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+        
+    file = request.files['file']
+    path = "temp_eeg.csv"
+    file.save(path)
+    
+    try:
+        # 1. Process via your 'engine'
+        pred_emotion, dom_wave = predict_emotion_from_file(path)
+        
+        # 2. Get AI recommendations
+        rec = get_exercise_recommendation(dom_wave, pred_emotion)
+        
+        # 3. Return JSON for the JavaScript to handle
+        return jsonify({
+            "emotion": pred_emotion,
+            "wave": dom_wave,
+            "recommendation": rec
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     print("Database URI configured. The app will connect to the database on first use.")

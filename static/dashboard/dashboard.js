@@ -221,3 +221,41 @@ async function postToCommunity() {
         }
     } catch (error) { console.error("Chat error:", error); }
 }
+
+async function submitFeedback(event) {
+    event.preventDefault(); // Prevents page reload
+    
+    const form = event.target;
+    const formData = new FormData(form);
+
+    // 1. Get the submit button to show loading state
+    const submitBtn = form.querySelector('.submit-btn');
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = "Sending...";
+    submitBtn.disabled = true;
+
+    try {
+        // 2. Send the data to your Flask route
+        const response = await fetch('/submit-feedback', {
+            method: 'POST',
+            body: formData
+        });
+
+        // 3. Parse the JSON response
+        const result = await response.json();
+
+        if (result.success) {
+            alert("Thank you! Feedback received successfully.");
+            form.reset(); // Clears the form
+        } else {
+            alert("Error: " + (result.error || "Something went wrong."));
+        }
+    } catch (error) {
+        console.error("Submission error:", error);
+        alert("Failed to connect to the server. Please try again.");
+    } finally {
+        // 4. Reset the button state
+        submitBtn.innerText = originalText;
+        submitBtn.disabled = false;
+    }
+}

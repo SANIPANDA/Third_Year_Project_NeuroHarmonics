@@ -253,7 +253,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
 }
 
@@ -295,10 +295,11 @@ body {
   left: 0;
   width: 100vw; /* Using vw/vh ensures it fills the viewport */
   height: 100vh;
-  z-index: -1; /* Sits behind everything else */
+  z-index: -2; /* Sits behind everything else */
   overflow: hidden;
   background: #000; /* Fallback color */
   display: block !important; /* Forces visibility */
+  pointer-events: none;
 }
 
 .video-background video {
@@ -501,4 +502,28 @@ body {
 .tip-card p {
   color: var(--text-gray);
   line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .tip-card-glass {
+        flex-direction: column;
+    }
+    .tip-image {
+        height: 200px;
+    }
+    .tip-content {
+        padding: 30px !important;
+    }
+    .tip-content h2 {
+        font-size: 1.5rem !important;
+    }
+}
+
+.tip-card-glass:hover .tip-image {
+    transform: scale(1.05);
+    transition: transform 0.6s ease;
+}
+
+.tip-image {
+    transition: transform 0.6s ease;
 }
