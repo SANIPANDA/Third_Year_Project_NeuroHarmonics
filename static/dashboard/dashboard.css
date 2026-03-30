@@ -1,3 +1,148 @@
+/* Purple Glassmorphic Inbox */
+:root {
+    --purple-main: #9d4edd;
+    --purple-glass: rgba(157, 78, 221, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.inbox-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+#connection-status-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Status Badge */
+.status-badge {
+    font-size: 0.8rem;
+    color: #888;
+    background: rgba(0,0,0,0.05);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot { font-size: 0.5rem; transition: color 0.3s; }
+
+/* The Glass Box */
+.glass-inbox {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    height: 550px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.message-container {
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Chat Bubbles */
+.chat-group { display: flex; flex-direction: column; }
+
+.message { max-width: 80%; display: flex; flex-direction: column; }
+
+/* User Bubble (Purple Gradient) */
+.message.user { align-self: flex-end; }
+.user-bubble {
+    background: linear-gradient(135deg, #9d4edd, #5a189a);
+    color: white;
+    padding: 14px 20px;
+    border-radius: 20px 20px 4px 20px;
+    box-shadow: 0 4px 15px rgba(157, 78, 221, 0.3);
+}
+
+/* Admin Bubble (Glass White) */
+.message.admin { align-self: flex-start; }
+.admin-bubble {
+    background: rgba(255, 255, 255, 0.9);
+    color: #2d3436;
+    padding: 14px 20px;
+    border-radius: 20px 20px 20px 4px;
+    border: 1px solid #eee;
+}
+
+.admin-bubble small {
+    display: block;
+    font-weight: 800;
+    color: var(--purple-main);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+/* Pending State */
+.pending-bubble {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    padding: 10px 15px;
+    background: rgba(0,0,0,0.03);
+    border-radius: 15px;
+    width: fit-content;
+}
+
+/* Animations */
+.slide-in { animation: slideUp 0.4s ease-out; }
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.typing-dots span {
+    animation: blink 1.4s infinite both;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0% { opacity: .2; } 20% { opacity: 1; } 100% { opacity: .2; } }
+
+/* 1. Ensure the form container is above the background */
+.contact-form {
+    position: relative !important;
+    z-index: 10; /* Higher than your background */
+    background: rgba(255, 255, 255, 0.1); /* Glass effect */
+    backdrop-filter: blur(10px);
+}
+
+/* 2. Ensure the button specifically is clickable */
+.submit-btn {
+    position: relative !important;
+    z-index: 20 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important; /* Forces it to receive clicks */
+}
+
+/* 3. Push the neural background to the absolute bottom */
+#neural-canvas, .neural-container, canvas {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1 !important; /* Moves it behind everything */
+    pointer-events: none !important; /* Mouse clicks pass right through it */
+}
+
 /* --- Live Analysis Card UI --- */
 .analysis-cards-grid {
     display: flex;
@@ -844,4 +989,29 @@ body.modal-open {
     z-index: 120;
     cursor: pointer !important;
     pointer-events: auto !important;
+}
+
+.inbox-wrapper { max-width: 800px; margin: 2rem auto; background: #f8f9fa; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.inbox-header { background: #fff; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+.status-badge { font-size: 0.75rem; font-weight: 600; color: #95a5a6; }
+
+.message-container { padding: 1.5rem; height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+
+/* Chat Bubbles */
+.message { display: flex; flex-direction: column; max-width: 75%; }
+.message.user { align-self: flex-end; }
+.message.admin { align-self: flex-start; margin-top: 8px; }
+
+.bubble { padding: 12px 16px; border-radius: 18px; position: relative; font-size: 0.95rem; line-height: 1.4; }
+.user .bubble { background: #007bff; color: white; border-bottom-right-radius: 4px; }
+.admin .bubble { background: #e9ecef; color: #333; border-bottom-left-radius: 4px; border: 1px solid #dee2e6; }
+
+.time { font-size: 0.7rem; display: block; margin-top: 4px; opacity: 0.8; text-align: right; }
+.admin .bubble small { font-weight: bold; color: #007bff; font-size: 0.7rem; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+/* Animation for new replies */
+.slide-in { animation: slideIn 0.4s ease-out; }
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

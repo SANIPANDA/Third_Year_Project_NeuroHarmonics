@@ -77,3 +77,74 @@ function showSection(sectionId) {
         document.querySelector('.menu-toggle i').className = 'fas fa-bars';
     }
 }
+
+// Function to open the modal and set the context
+function replyTo(msgId) {
+    const modal = document.getElementById('replyModal');
+    const msgIdInput = document.getElementById('replyMsgId'); // Line 87 target
+    const replyTextarea = document.getElementById('adminReplyText');
+
+    // Safety Check: If any element is missing, stop and show a clear error
+    if (!modal || !msgIdInput || !replyTextarea) {
+        console.error("Missing Elements:", { modal, msgIdInput, replyTextarea });
+        alert("System Error: Modal elements are missing from the page.");
+        return;
+    }
+
+    // Now it's safe to set the value
+    msgIdInput.value = msgId;
+    replyTextarea.value = ""; // Clear old text
+    
+    modal.style.display = "flex";
+    replyTextarea.focus();
+}
+
+
+// Function to close the modal
+function closeModal() {
+    document.getElementById('replyModal').style.display = "none";
+}
+
+// Function to send the reply to the database
+async function submitReply() {
+    const msgId = document.getElementById('replyMsgId').value;
+    const replyText = document.getElementById('adminReplyText').value;
+    const btn = document.getElementById('sendReplyBtn');
+
+    if (!replyText.trim()) {
+        alert("Please type a message before sending.");
+        return;
+    }
+
+    // UI Feedback
+    btn.disabled = true;
+    btn.innerText = "Sending...";
+
+    try {
+        const response = await fetch('/admin/reply-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: msgId,
+                reply: replyText
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert("Reply sent successfully!");
+            closeModal();
+            // Optional: Refresh page or remove the log item from UI
+            location.reload(); 
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (error) {
+        console.error("Reply Error:", error);
+        alert("Failed to reach server.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Send Message";
+    }
+}

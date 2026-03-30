@@ -23,34 +23,56 @@ def is_strong_password(password):
         return False, "Password must contain numbers"
     return True, "Valid"
 
+from flask import request, jsonify, session
+from werkzeug.security import check_password_hash
+
 @auth.route("/login", methods=["POST"])
 def login():
     try:
         data = request.get_json()
         email = data.get("email")
         password = data.get("password")
+
         if not email or not password:
             return jsonify({"success": False, "error": "Email and password required"}), 400
+
+        # 1. Fetch user from database
         user = User.query.filter_by(email=email).first()
+
+        # 2. Verify existence and password hash
         if not user or not check_password_hash(user.password, password):
             return jsonify({"success": False, "error": "Invalid email or password"}), 401
+
+        # 3. Determine display name
         username = user.username if user.username else (user.email.split('@')[0] if user.email else "User")
+
+        # 4. Set Session Variables (Crucial for the Support Form)
         session["user_id"] = user.id
         session["username"] = username
+        session["user_email"] = user.email  # <--- FIXED: The Missing Link
         session["role"] = user.role
+
+        # 5. Update user status to active
         user.status = "active"
+        
         try:
             db.session.commit()
         except Exception:
             db.session.rollback()
             return jsonify({"success": False, "error": "Database error"}), 500
-        return jsonify({"success": True, "username": username})
+
+        # 6. Return success (Frontend will handle the redirect to /dashboard)
+        return jsonify({
+            "success": True, 
+            "username": username,
+            "redirect": "/dashboard"
+        })
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": "Server error"}), 500
-
-
+    
 @auth.route("/register", methods=["POST"])
 def register():
     try:

@@ -65,6 +65,61 @@
             {% endfor %}
         </div>
     </section>
+    <div id="replyModal" class="modal">
+    <div class="modal-content glass-card">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2><i class="fas fa-reply"></i> Send Response</h2>
+        
+        <input type="hidden" id="replyMsgId"> 
+        
+        <textarea id="adminReplyText" placeholder="Type your message..."></textarea>
+        
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+            <button class="primary-btn" id="sendReplyBtn" onclick="submitReply()">Send Message</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modal Backdrop */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0; top: 0; width: 100%; height: 100%; 
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    align-items: center; justify-content: center;
+}
+
+/* Modal Content */
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    width: 450px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.close-btn { position: absolute; right: 20px; top: 15px; font-size: 24px; cursor: pointer; color: #666; }
+
+#adminReplyText {
+    width: 100%;
+    height: 120px;
+    margin: 15px 0;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    resize: none;
+}
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.cancel-btn { background: #eee; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.primary-btn { background: #9d4edd; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+</style>
 </main>
 
 <script src="{{ url_for('static', filename='admin/admin.js') }}"></script>

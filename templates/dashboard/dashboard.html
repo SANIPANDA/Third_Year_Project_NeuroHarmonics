@@ -38,6 +38,9 @@
             <button class="nav-item" onclick="showSection('references')">
                 <i class="fas fa-gamepad"></i> Games & References
             </button>
+            <button class="nav-item" onclick="showSection('inbox', this)">
+        <i class="fas fa-inbox"></i> Support Inbox
+    </button>
         </nav>
 
         <div class="sidebar-footer">
@@ -61,28 +64,12 @@
                 <i class="fas fa-sign-out-alt"></i> Sign Out
             </a>
         </div>
-        <div class="inbox-container">
-    <h2>Admin Support Inbox</h2>
-    
-    {% for inquiry in inquiries %}
-        <div class="message-card">
-            <div class="user-query">
-                <strong>You asked:</strong> {{ inquiry.message }}
-            </div>
-            
-            {% if inquiry.admin_reply %}
-            <div class="admin-response">
-                <span class="admin-badge">Admin Reply:</span>
-                <p>{{ inquiry.admin_reply }}</p>
-            </div>
-            {% else %}
-            <div class="pending-status">
-                <em>Waiting for admin review...</em>
-            </div>
-            {% endif %}
-        </div>
-    {% endfor %}
-</div>
+
+    <div class="inbox-wrapper">
+    <div class="inbox-header">
+        <h2><i class="fas fa-comments"></i> Support History</h2>
+        <span id="connection-status" class="status-badge">Connecting...</span>
+    </div>
     </aside>
 
     <main class="main-content">
@@ -99,7 +86,6 @@
                 </div>
                 <div>
                     <h2 style="margin:0;">{{ user.username }}</h2>
-                    <p style="margin:0;opacity:0.7;">Student at Banasthali Vidyapith</p>
                 </div>
             </div>
 
@@ -385,10 +371,14 @@
 
 <div class="glass-card contact-form">
     <h3><i class="fas fa-envelope"></i> Contact Support</h3>
-    <form onsubmit="sendSupportMessage(event)"> <input type="text" name="subject" placeholder="Subject" required>
-        <textarea name="message" placeholder="Describe your issue or question..." required></textarea>
-        <button type="submit" class="submit-btn">Send Message</button>
+    <form id="supportForm"> 
+        <input type="text" id="supportSubject" placeholder="Subject" required>
+        <textarea id="supportMessage" placeholder="Describe your issue..." required></textarea>
+        <button type="submit" id="submitBtn" class="submit-btn" onclick="sendSupportMessage(event)">
+    <span class="btn-text">Send Message</span> <span class="loader" style="display:none;">Sending...</span> 
+</button>
     </form>
+    <div id="formResponse"></div>
 </div>
             </div>
         </section>
@@ -433,6 +423,63 @@
                 </div>
             </div>
         </section>
+
+    <section id="inbox" class="content-section" style="display:none;">
+    <div class="inbox-header-flex">
+        <h1>Support Inbox</h1>
+        <div id="connection-status-wrapper">
+            <span id="connection-status" class="status-badge">
+                <i class="fas fa-circle status-dot"></i>...</span>
+            <button id="refreshInbox" class="refresh-circle-btn" onclick="fetchAdminMessages()" title="Refresh Inbox">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+    <p class="subtitle">Live neural-support history and updates.</p>
+
+    <div class="glass-inbox">
+        <div id="message-container" class="message-container">
+            {% for inquiry in inquiries %}
+            <div class="chat-group" data-id="{{ inquiry.id }}">
+                <div class="message user">
+                    <div class="bubble user-bubble">
+                        <p>{{ inquiry.message }}</p>
+                        <span class="time">{{ inquiry.timestamp.strftime('%H:%M') if inquiry.timestamp }}</span>
+                    </div>
+                </div>
+
+                <div class="admin-reply-slot">
+                    {% if inquiry.admin_reply %}
+                    <div class="message admin slide-in">
+                        <div class="bubble admin-bubble">
+                            <small><i class="fas fa-robot"></i> Neuro-Support</small>
+                            <p>{{ inquiry.admin_reply }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="message pending">
+                        <div class="bubble pending-bubble">
+                            <span class="typing-dots">
+                                <span>.</span><span>.</span><span>.</span>
+                            </span> 
+                            Waiting for neural review
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-inbox">
+                <div class="empty-icon">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+                <p>No neural inquiries yet.</p>
+                <button class="action-btn" onclick="showSection('support', this)">Start a Conversation</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
 
     </main>
     <!-- Settings Modal -->

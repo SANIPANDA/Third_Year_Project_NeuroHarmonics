@@ -4,6 +4,7 @@ import sqlalchemy
 from flask import Flask, render_template, redirect, session, request, url_for, flash, jsonify
 from sqlalchemy import func
 from sqlalchemy.exc import OperationalError
+import supabase
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 from models import db, Feedback, ContactMessage, User, CommunityMessage, Admin
@@ -32,7 +33,7 @@ client = genai.Client(api_key="AIzaSyAHNxqL07XaIfR_Xk3xiEvTzr86kYtTyIA")
 
 SUPABASE_URL = "https://rlbpjxrwgsurkbbtfyqy.supabase.co" 
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsYnBqeHJ3Z3N1cmtiYnRmeXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNzkyMTEsImV4cCI6MjA4Nzc1NTIxMX0.fSiYOkbSjP7JsZGxNlT0J5sXmUuxrz2c-iiuCvjSNA0"
-supabase_storage: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_database_uri():
     uri = "postgresql://postgres:06kingbeast_2328@db.rlbpjxrwgsurkbbtfyqy.supabase.co:5432/postgres"
@@ -51,6 +52,10 @@ app.secret_key = "super-secret-key"
 # configure SQLAlchemy
 app.config["SQLALCHEMY_DATABASE_URI"] = get_database_uri()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,  # Checks if connection is alive before using it
+    "pool_recycle": 300,    # Re-connects every 5 minutes
+}
 
 db.init_app(app)
 
@@ -136,18 +141,19 @@ def health_tips():
 
 @app.route("/logout")
 def logout():
-    # 1. Get the user ID from the session before clearing it
     user_id = session.get("user_id")
-    
     if user_id:
-        # 2. Find the user in the database
-        user = User.query.get(user_id)
-        if user:
-            # 3. Change status to inactive
-            user.status = "inactive"
-            db.session.commit()
+        try:
+            # Refresh the session to ensure a fresh connection
+            db.session.remove() 
+            user = User.query.get(user_id)
+            if user:
+                user.status = "inactive"
+                db.session.commit()
+        except Exception as e:
+            logging.error(f"Logout DB Error: {e}")
+            db.session.rollback()
     
-    # 4. Wipe the session clean
     session.clear()
     return redirect("/login")
 
@@ -196,26 +202,79 @@ def submit_feedback():
         logging.error(f"Unexpected error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-@app.route('/send-message', methods=['POST'])
-def send_message():
-    user = User.query.filter_by(username=session.get('username')).first()
-    user_id = user.id if user else None
+@app.route('/api/contact', methods=['POST'])
+def handle_contact():
+    # 1. Debug Session (Check your VS Code terminal)
+    print(f"DEBUG: Current Session Keys: {list(session.keys())}")
+    print(f"DEBUG: Email in Session: {session.get('user_email')}")
+    
+    # 2. Check for the specific key 'user_email' set in your login route
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({"success": False, "error": "Session missing email. Please log out and back in."}), 401
     
     try:
-        new_message = ContactMessage(
-            user_id=user_id,
-            name=session.get('username', 'Guest'),
-            email=user.email if user else "guest@example.com",
-            subject=request.form.get('subject'),
-            message=request.form.get('message')
-        )
-        db.session.add(new_message)
-        db.session.commit()
-        return jsonify({"success": True})
-    except OperationalError as e:
-        logging.error(f"Database write failed in send_message: {e}")
-        return jsonify({"error": "Database unavailable"}), 503
+        data = request.json
+        if not data:
+            return jsonify({"success": False, "error": "No data received"}), 400
 
+        # 3. Refresh SQLAlchemy session to prevent 'Connection Closed' errors
+        # This clears stale connections before we talk to Supabase
+        db.session.remove() 
+
+        # 4. Gather info from session (using the keys from your auth logic)
+        user_id = session.get('user_id')
+        user_name = session.get('username', 'Guest User')
+
+        # 5. Prepare data for the 'contact_message' table
+        new_message = {
+            "user_id": user_id if user_id else None, # Ensures it's null if missing
+            "name": user_name,
+            "email": user_email,
+            "subject": data.get('subject', 'No Subject'),
+            "message": data.get('message'),
+            "is_resolved": False,
+            "admin_reply": None
+        }
+
+        # 6. Insert into Supabase
+        # Ensure your Supabase client is initialized as 'supabase'
+        result = supabase_ctx.table("contact_message").insert(new_message).execute()
+
+        return jsonify({
+            "success": True, 
+            "message": "Support message sent!",
+            "data": result.data
+        }), 200
+
+    except Exception as e:
+        # This will print the EXACT error (typos, DB errors, etc.) in your terminal
+        print(f"CRITICAL FLASK ERROR: {str(e)}") 
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/support')
+def support_page():
+    """Renders the support page with existing messages for the user"""
+    user_email = session.get('user_email')
+    
+    if not user_email:
+        # Redirect to login or show empty state
+        return render_template('support.html', inquiries=[])
+
+    try:
+        # Fetch existing messages for this user from Supabase
+        response = supabase_ctx.table("contact_message") \
+            .select("*") \
+            .eq("email", user_email) \
+            .order("timestamp", desc=True) \
+            .execute()
+            
+        return render_template('support.html', inquiries=response.data)
+    except Exception as e:
+        print(f"Error fetching inquiries: {e}")
+        return render_template('support.html', inquiries=[])
+    
 # 1. Route to serve the dedicated admin login page
 @app.route("/admin-login-page")
 def admin_login_page():
@@ -283,28 +342,6 @@ def post_community():
         return jsonify({"success": True})
     return jsonify({"error": "Unauthorized"}), 401
 
-
-@app.route('/admin/reply-message', methods=['POST'])
-def reply_message():
-    if session.get('role') != 'admin':
-        return jsonify({"success": False, "message": "Unauthorized"}), 403
-
-    data = request.get_json()
-    msg_id = data.get('id')
-    reply_text = data.get('reply')
-
-    try:
-        message = ContactMessage.query.get(msg_id)
-        if message:
-            message.admin_reply = reply_text
-            message.is_resolved = True  # Mark as resolved so it clears from dashboard
-            db.session.commit()
-            return jsonify({"success": True})
-        return jsonify({"success": False, "message": "Message not found"}), 404
-    except OperationalError as e:
-        logging.error(f"Database error in reply_message: {e}")
-        return jsonify({"success": False, "message": "Database unavailable"}), 503
-
 @app.route('/update-profile', methods=['POST'])
 def update_profile():
     new_name = request.form.get('username')
@@ -336,14 +373,14 @@ def update_profile():
             
             # 3. Upload to Supabase Bucket 'avatars'
             # Note: Ensure you created a PUBLIC bucket named 'avatars' in Supabase first
-            supabase_storage.storage.from_('avatars').upload(
+            supabase_ctx.storage.from_('avatars').upload(
                 path=storage_path,
                 file=file_content,
                 file_options={"upsert": "true", "content-type": photo.content_type}
             )
             
             # 4. Get Public URL and save to SQLAlchemy Database
-            public_url = supabase_storage.storage.from_('avatars').get_public_url(storage_path)
+            public_url = supabase_ctx.storage.from_('avatars').get_public_url(storage_path)
             user.avatar = public_url
 
         db.session.commit()
@@ -517,8 +554,51 @@ def predict():
             os.remove(temp_path)
         logging.error(f"Prediction Error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/get_inquiries')
+def get_inquiries():
+    user_email = session.get('user_email')
     
-    
+    # Check if user is logged in
+    if not user_email:
+        # RETURN JSON, NOT A REDIRECT!
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+
+    try:
+        # ... your existing Supabase logic ...
+        response = supabase_ctx.table('contact_message').select('*').eq('email', user_email).execute()
+        return jsonify({"success": True, "inquiries": response.data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500 
+
+@app.route('/admin/reply-message', methods=['POST'])
+def reply_message():
+    # Security Check
+    if session.get('role') != 'admin':
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+
+    data = request.get_json()
+    msg_id = data.get('id')
+    reply_text = data.get('reply')
+
+    try:
+        # 1. Update the record in Postgres via SQLAlchemy
+        # This will trigger the Supabase Realtime update to the user
+        message = ContactMessage.query.get(msg_id)
+        if message:
+            message.admin_reply = reply_text
+            message.is_resolved = True 
+            db.session.commit()
+            return jsonify({"success": True})
+        
+        # This runs only if 'message' is None
+        return jsonify({"success": False, "message": "Message not found"}), 404
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
 if __name__ == "__main__":
     # This keeps the server running until you press Ctrl+C
     app.run(host='0.0.0.0', port=5000, debug=True)

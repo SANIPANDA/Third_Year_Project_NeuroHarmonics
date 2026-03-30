@@ -1,3 +1,4 @@
+console.log("Dashboard JS Loaded");
 // --- 1. CORE NAVIGATION & UI TOGGLES ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,6 +15,66 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the profile modal logic
     initProfileModal();
 });
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', initRealtimeInbox);
+
+async function sendSupportMessage(event) {
+    event.preventDefault();
+
+    const btn = document.getElementById('submitBtn');
+    const btnText = btn?.querySelector('.btn-text'); // Added ?.
+    const loader = btn?.querySelector('.loader');   // Added ?.
+    const responseDiv = document.getElementById('formResponse');
+
+    // UI Feedback: Loading (Now safe from null errors)
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.style.display = 'none';
+    if (loader) loader.style.display = 'inline-block';
+
+    const subjectEl = document.getElementById('supportSubject');
+    const messageEl = document.getElementById('supportMessage');
+
+    if (!subjectEl || !messageEl) {
+        console.error("Input fields missing");
+        return;
+    }
+
+    const formData = {
+        subject: subjectEl.value,
+        message: messageEl.value
+    };
+
+    try {
+        const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            if (responseDiv) {
+                responseDiv.style.color = "#2ecc71";
+                responseDiv.innerText = "Message sent successfully!";
+            }
+            document.getElementById('supportForm').reset();
+        } else {
+            throw new Error(result.error || "Failed to send message");
+        }
+    } catch (error) {
+        if (responseDiv) {
+            responseDiv.style.color = "#e74c3c";
+            responseDiv.innerText = "Error: " + error.message;
+        }
+    } finally {
+        // UI Feedback: Reset
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.style.display = 'inline-block';
+        if (loader) loader.style.display = 'none';
+    }
+}
 
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
@@ -394,4 +455,120 @@ function resetEEGDisplay() {
     document.getElementById("eeg-emotion-result").innerText = "";
     document.getElementById("ai-wellness-recommendation").style.display = "none";
     document.getElementById("file-status").innerHTML = `<i class="fas fa-upload"></i> Drag & drop EEG file here<br>or click to select (.csv, .edf, .txt)`;
+}
+
+// Initialize Supabase Client (Ensure these vars are available)
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function initRealtimeInbox() {
+    const statusEl = document.getElementById('connection-status');
+
+    const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'contact_message'
+            },
+            (payload) => {
+                const updatedMsg = payload.new;
+                
+                // Find the specific message group in the DOM
+                const slot = document.querySelector(`[data-id="${updatedMsg.id}"] .admin-reply-slot`);
+                
+                if (slot && updatedMsg.admin_reply) {
+                    slot.innerHTML = `
+                        <div class="message admin slide-in">
+                            <div class="bubble">
+                                <small>Support Team</small>
+                                <p>${updatedMsg.admin_reply}</p>
+                            </div>
+                        </div>
+                    `;
+                    // Optional: Play a subtle notification sound here
+                }
+            }
+        )
+        .subscribe((status) => {
+            const statusEl = document.getElementById('connection-status');
+            const dot = statusEl.querySelector('.status-dot');
+            if (status === 'SUBSCRIBED') {
+                statusEl.innerHTML = '<i class="fas fa-circle status-dot" style="color: #2ecc71"></i> Live Sync Active';
+            }
+        });
+}
+
+// dashboard.js
+
+async function fetchAdminMessages() {
+    const container = document.getElementById('message-container');
+    const refreshBtn = document.getElementById('refreshInbox');
+    const icon = refreshBtn?.querySelector('i');
+
+    // 1. UI Feedback: Spin the refresh icon
+    if (icon) icon.classList.add('fa-spin');
+    
+    try {
+        // 2. Call the API route we created in app.py
+        const response = await fetch('/api/get_inquiries');
+        const data = await response.json();
+
+        if (data.success) {
+            // 3. Clear current messages
+            container.innerHTML = "";
+
+            if (data.inquiries.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-inbox">
+                        <i class="fas fa-comment-slash"></i>
+                        <p>No neural inquiries yet.</p>
+                    </div>`;
+                return;
+            }
+
+            // 4. Loop through and build the HTML for each message
+            data.inquiries.forEach(msg => {
+                const chatGroup = document.createElement('div');
+                chatGroup.className = 'chat-group';
+                chatGroup.setAttribute('data-id', msg.id);
+
+                // Build the Admin Reply HTML or the Pending state
+                const adminReplyHTML = msg.admin_reply 
+                    ? `<div class="message admin slide-in">
+                            <div class="bubble admin-bubble">
+                                <small><i class="fas fa-robot"></i> Neuro-Support</small>
+                                <p>${msg.admin_reply}</p>
+                            </div>
+                       </div>`
+                    : `<div class="message pending">
+                            <div class="bubble pending-bubble">
+                                <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span> 
+                                Waiting for neural review
+                            </div>
+                       </div>`;
+
+                chatGroup.innerHTML = `
+                    <div class="message user">
+                        <div class="bubble user-bubble">
+                            <p>${msg.message}</p>
+                            <span class="time">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                    </div>
+                    <div class="admin-reply-slot">
+                        ${adminReplyHTML}
+                    </div>
+                `;
+                container.appendChild(chatGroup);
+            });
+        }
+    } catch (error) {
+        console.error("Refresh Error:", error);
+    } finally {
+        // 5. Stop the spin icon after a short delay
+        setTimeout(() => {
+            if (icon) icon.classList.remove('fa-spin');
+        }, 500);
+    }
 }
