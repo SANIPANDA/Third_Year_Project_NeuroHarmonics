@@ -59,18 +59,19 @@
       <p class="section-subtitle">We've picked some perfect music for you based on the time of day</p>
       <div class="video-gallery-grid">
         {% for music in music_recommendations %}
-           {% set music_url = url_for('static', filename=music.music_path) %}
-           {% set thumb_url = url_for('static', filename=music.thumbnail) %}
-           <div class="video-card" onclick="playMusicCard('{{ music_url }}')">
-          <div class="video-thumb-container">
-                <img class="video-thumb" src="{{ thumb_url }}" alt="{{ music.title }} thumbnail">
-            <button class="play-btn">
-              <i class="fas fa-play"></i>
-            </button>
+          {% set music_url = music.music_path %}
+          {% set thumb_url = music.thumbnail %}
+          
+          <div class="video-card" onclick="playMusicCard('{{ music_url }}')">
+              <div class="video-thumb-container">
+                    <img class="video-thumb" src="{{ thumb_url }}" alt="{{ music.title }} thumbnail">
+                    <button class="play-btn">
+                        <i class="fas fa-play"></i>
+                    </button>
+              </div>
+              <div class="video-title">{{ music.title }}</div>
+              <div class="video-quote">"{{ music.quote }}"</div>
           </div>
-          <div class="video-title">{{ music.title }}</div>
-          <div class="video-quote">"{{ music.quote }}"</div>
-        </div>
         {% endfor %}
       </div>
     </div>
@@ -111,11 +112,15 @@
       <h2 class="section-title">Yoga Recommendations for You</h2>
       <div class="video-gallery-grid">
         {% for yoga in yoga_recommendations %}
-          {% set yoga_video_url = url_for('static', filename=yoga.video) %}
-          {% set yoga_thumb_url = url_for('static', filename=yoga.thumbnail) %}
+          {% set yoga_video_url = yoga.video %}
+          {% set yoga_thumb_url = yoga.thumbnail %}
+
           <div class="video-card" onclick="playYogaVideo('{{ yoga_video_url }}', '{{ yoga.title }}', '{{ yoga_thumb_url }}')">
             <div class="video-thumb-container">
               <img class="video-thumb" src="{{ yoga_thumb_url }}" alt="{{ yoga.title }} thumbnail">
+              <button class="play-btn">
+                <i class="fas fa-play"></i>
+              </button>
             </div>
             <div class="video-title">{{ yoga.title }}</div>
             <div class="video-tip">{{ yoga.description }}</div>

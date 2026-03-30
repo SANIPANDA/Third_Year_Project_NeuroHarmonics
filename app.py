@@ -118,26 +118,90 @@ def dashboard():
                            inquiries=personal_inquiries)
 
 
+# --- CLOUDINARY MUSIC CONFIGURATION ---
+
+# We store 4 music recommendations for each time of day
+MUSIC_DATA = {
+    "morning": [
+        {"title": "Morning Focus 1", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461764/morning1_uqkazq.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/morning1_xrvl3d.webp", "quote": "Start your day with clarity."},
+        {"title": "Morning Focus 2", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461675/morning2_epk3pk.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/morning2_i9fank.webp", "quote": "Align your neural rhythms."},
+        {"title": "Morning Focus 3", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461692/morning3_uioh3n.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/morning3_nurs6z.jpg", "quote": "Boost your morning productivity."},
+        {"title": "Morning Focus 4", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461703/morning4_ja0o33.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461673/morning4_vkuqmc.webp", "quote": "A fresh start for your mind."}
+    ],
+    "afternoon": [
+        {"title": "Afternoon Reset 1", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461764/morning1_uqkazq.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/morning1_xrvl3d.webp", "quote": "Recharge your mental energy."},
+        {"title": "Afternoon Reset 2", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461675/morning2_epk3pk.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/morning2_i9fank.webp", "quote": "Beat the afternoon slump."},
+        {"title": "Afternoon Reset 3", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461692/morning3_uioh3n.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/morning3_nurs6z.jpg", "quote": "Focus-enhancing frequencies."},
+        {"title": "Afternoon Reset 4", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461703/morning4_ja0o33.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461673/morning4_vkuqmc.webp", "quote": "Stay sharp, stay present."}
+    ],
+    "evening": [
+        {"title": "Evening Calm 1", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461768/evening1_ksall2.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/evening1_sma34d.jpg", "quote": "Wind down after a long day."},
+        {"title": "Evening Calm 2", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461893/evening2_m2ukss.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461674/evening2_mnmzsp.webp", "quote": "Ease your mind into relaxation."},
+        {"title": "Evening Calm 3", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461725/evening3_qclnlu.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461674/evening3_aezeb4.jpg", "quote": "Gentle waves for your evening."},
+        {"title": "Evening Calm 4", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461738/evening4_yz2y5c.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461680/evening4_imxhfv.jpg", "quote": "Release the day's stress."}
+    ],
+    "night": [
+        {"title": "Night Recovery 1", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461711/night1_wuo4jf.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461673/night1_sfgoe5.jpg", "quote": "Deep sleep induction."},
+        {"title": "Night Recovery 2", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461810/night2_y3plzt.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461675/night2_vvelpx.jpg", "quote": "Enter a state of restorative rest."},
+        {"title": "Night Recovery 3", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461759/night3_xzyums.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461676/night3_ol9wjj.jpg", "quote": "Soothing ambient sounds."},
+        {"title": "Night Recovery 4", "music_path": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461806/night4_hu74ec.mp3", "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461678/night4_a8wy3j.jpg", "quote": "Peaceful dreams await."}
+    ]
+}
+
+YOGA_LIST = [
+    {
+        "title": "Scorpion Pose (Vrischikasana)",
+        "video": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1772135116/scorpion-pose_eztryo.mp4",  
+        "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461677/scorpion-pose_e4znot.webp",  
+        "description": "An advanced inversion that increases blood flow to the brain and challenges neural focus."
+    },
+    {
+        "title": "Child's Pose (Balasana)",
+        "video": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1772135116/childpose_rezjh3.mp4", 
+        "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461677/childpose_oliylc.jpg", 
+        "description": "A restorative posture that calms the parasympathetic nervous system and reduces mental fatigue."
+    },
+    {
+        "title": "Guided Meditation",
+        "video": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1772135116/meditation_ylb37c.mp4", 
+        "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461677/meditation_arkvhz.jpg", 
+        "description": "A seated practice to stabilize alpha brainwaves and enhance emotional regulation."
+    },
+    {
+        "title": "Balancing Stick (Tuladandasana)",
+        "video": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1772135116/balancing_stick_jwkstx.mp4", 
+        "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461678/balancing_stick_zbol7m.webp", 
+        "description": "Increases heart rate and builds cognitive endurance through intense physical balance."
+    }
+]
+
 @app.route("/health-tips")
 def health_tips():
     hour = datetime.now().hour
     
-    # Identify time period
     if 5 <= hour < 12:
-        period, greeting = "morning", "Good Morning"
+        period = "morning"
+        greeting = "Good Morning"
     elif 12 <= hour < 17:
-        period, greeting = "afternoon", "Good Afternoon"
+        period = "afternoon"
+        greeting = "Good Afternoon"
     elif 17 <= hour < 21:
-        period, greeting = "evening", "Good Evening"
+        period = "evening"
+        greeting = "Good Evening"
     else:
-        period, greeting = "night", "Good Night"
+        period = "night"
+        greeting = "Good Night"
 
-    # Select a random tip from that period
+    # Select random tip and all 4 music recommendations for that period
     selected_tip = random.choice(WELLNESS_DATA[period])
+    selected_music = MUSIC_DATA[period] # This gives the list of 4 files
 
     return render_template("index/health_tips.html", 
                            greeting=greeting, 
-                           tip=selected_tip)
+                           tip=selected_tip,
+                           time_greeting=greeting,
+                           music_recommendations=selected_music,
+                           yoga_recommendations=YOGA_LIST)
 
 @app.route("/logout")
 def logout():
