@@ -155,22 +155,41 @@ function initProfileModal() {
 async function analyzeData() {
     const fileInput = document.getElementById("eegFile");
     const resultBox = document.getElementById("result");
+    
     if (!fileInput || !fileInput.files.length) {
         alert("Please upload an EEG file first");
         return;
     }
 
     const formData = new FormData();
-    formData.append("eeg", fileInput.files[0]);
-    resultBox.innerText = "Analyzing...";
+    // CHANGED: Key 'file' must match request.files['file'] in Python
+    formData.append("file", fileInput.files[0]); 
+    
+    resultBox.innerText = "Processing Neural Waves...";
 
     try {
-        const response = await fetch("http://127.0.0.1:5000/analyze", { method: "POST", body: formData });
+        // CHANGED: URL points to /predict to match your @app.route
+        const response = await fetch("http://127.0.0.1:5000/predict", { 
+            method: "POST", 
+            body: formData 
+        });
+        
+        // We expect a JSON response now for the dashboard
         const data = await response.json();
-        if (data.error) resultBox.innerText = data.error;
-        else resultBox.innerHTML = `<b style="color:green">${data.emotion} (${Math.round(data.confidence * 100)}%)</b>`;
+        
+        if (data.error) {
+            resultBox.innerText = "Error: " + data.error;
+        } else {
+            // Update the UI with the Emotion and the AI Recommendation
+            resultBox.innerHTML = `
+                <b style="color:var(--primary-color)">Detected: ${data.emotion}</b><br>
+                <small>Dominant Wave: ${data.wave}</small><hr>
+                <p>AI Rec: ${data.recommendation.name}</p>
+            `;
+        }
     } catch (error) {
-        resultBox.innerText = "Server error";
+        console.error("Fetch Error:", error);
+        resultBox.innerText = "Server connection failed.";
     }
 }
 
@@ -258,4 +277,121 @@ async function submitFeedback(event) {
         submitBtn.innerText = originalText;
         submitBtn.disabled = false;
     }
+}
+
+// Function to update the UI label when a file is picked
+function updateFileLabel() {
+    const input = document.getElementById('eegFile');
+    const status = document.getElementById('file-status');
+    if (input.files.length > 0) {
+        status.innerHTML = `<i class="fas fa-file-csv"></i> Selected: <b>${input.files[0].name}</b>`;
+    }
+}
+
+const eegFileInput = document.getElementById('eegFile');
+const fileStatus = document.getElementById('file-status');
+const fileNameDisplay = document.getElementById('file-name-display');
+
+// Function to update the UI when a file is picked
+function handleFileChange(file) {
+    if (file) {
+        const extension = file.name.split('.').pop().toLowerCase();
+        const allowed = ['csv', 'edf', 'txt'];
+
+        if (allowed.includes(extension)) {
+            // Update the UI to show the file is selected
+            fileStatus.innerHTML = `<i class="fas fa-file-csv" style="color:#4f46e5; font-size:2rem;"></i><br>
+                                    <span style="color:#4f46e5;">${file.name}</span>`;
+            console.log("File selected successfully:", file.name);
+        } else {
+            alert("Please upload a valid .csv, .edf, or .txt file.");
+            eegFileInput.value = ""; // Reset if invalid
+        }
+    }
+}
+
+// Listen for the standard click/select
+eegFileInput.addEventListener('change', (e) => {
+    handleFileChange(e.target.files[0]);
+});
+
+// Update your existing Drag & Drop 'drop' listener to use this function too
+const eegDropArea = document.getElementById('eeg-drop-area');
+eegDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    eegDropArea.classList.remove('drag-over');
+    
+    const droppedFile = e.dataTransfer.files[0];
+    // This part is critical: it attaches the dropped file to the hidden input
+    eegFileInput.files = e.dataTransfer.files; 
+    handleFileChange(droppedFile);
+});
+
+async function analyzeEEGFile() {
+    const fileInput = document.getElementById("eegFile");
+    const resultBox = document.getElementById("eeg-emotion-result");
+    const recSection = document.getElementById("ai-wellness-recommendation");
+    const recText = document.getElementById("rec-text");
+    const recMusic = document.getElementById("rec-music");
+    
+    // Add an ID to your image tag in HTML to show the graph
+    const graphImg = document.getElementById("eeg-graph-display"); 
+
+    if (!fileInput.files.length) {
+        alert("Please select an EEG file (CSV, EDF, or TXT) first.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    // UI Feedback: Show analyzing state
+    resultBox.innerHTML = "🔍 <span style='color:#a855f7;'>Analyzing Brainwaves... Please wait.</span>";
+    recSection.style.display = "none";
+
+    try {
+        const response = await fetch("/predict", { 
+            method: "POST", 
+            body: formData 
+        });
+        
+        const data = await response.json();
+
+        if (data.error) {
+            resultBox.innerHTML = `<span style="color:red">Error: ${data.error}</span>`;
+        } else {
+            // 1. Show Emotion Result and Confidence
+            resultBox.innerHTML = `State: <b style="color:#4f46e5">${data.emotion}</b> (${data.confidence} confidence)`;
+            
+            // 2. Display the Matplotlib Bar Graph
+            if (graphImg && data.graph) {
+                graphImg.src = "data:image/png;base64," + data.graph;
+                graphImg.style.display = "block";
+            }
+
+            // 3. Show AI Recommendation (Exercise + Music)
+            recText.innerText = `${data.recommendation.name}: ${data.recommendation.benefit}`;
+            
+            // Note: If your Python Gemini function returns 'keyword', we use it here
+            recMusic.innerHTML = `🎵 Suggested Sound: <b>${data.recommendation.keyword || 'Ambient Flow'}</b>`;
+            
+            // 4. Reveal the recommendation section
+            recSection.style.display = "block";
+            
+            // Trigger music player if you have one
+            if(typeof playSuggestedMusic === "function") {
+                playSuggestedMusic(data.recommendation.keyword);
+            }
+        }
+    } catch (error) {
+        resultBox.innerHTML = "<span style='color:red;'>❌ Connection failed. Ensure Flask is running.</span>";
+        console.error("Error:", error);
+    }
+}
+
+function resetEEGDisplay() {
+    document.getElementById("eegFile").value = "";
+    document.getElementById("eeg-emotion-result").innerText = "";
+    document.getElementById("ai-wellness-recommendation").style.display = "none";
+    document.getElementById("file-status").innerHTML = `<i class="fas fa-upload"></i> Drag & drop EEG file here<br>or click to select (.csv, .edf, .txt)`;
 }

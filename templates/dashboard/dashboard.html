@@ -153,12 +153,16 @@
         <button class="refresh-btn" id="refresh-eeg" title="Refresh" onclick="resetEEGDisplay()" style="position:absolute;top:0;right:0;background:none;border:none;font-size:1.2em;cursor:pointer;color:#a855f7;">&#x21bb;</button>
     </h2>
     <div class="drop-area" id="eeg-drop-area">
-        <div class="drop-instructions" id="file-status">
-            <i class="fas fa-upload"></i> Drag & drop EEG file here<br>or click to select (.csv, .edf, .txt)
-        </div>
-        <input type="file" id="eegFile" onchange="updateFileLabel()" accept=".csv,.edf,.txt" style="display:none;" />
-        <button class="action-btn" onclick="document.getElementById('eegFile').click()">Select EEG File</button>
+    <div class="drop-instructions" id="file-status">
+        <i class="fas fa-upload"></i> Drag & drop EEG file here<br>
+        <span id="file-name-display" style="color:#a855f7; font-weight:bold;">or click to select (.csv, .edf, .txt)</span>
     </div>
+    <input type="file" id="eegFile" accept=".csv,.edf,.txt" style="display:none;" />
+    
+    <button type="button" class="action-btn" onclick="document.getElementById('eegFile').click()">
+        Select EEG File
+    </button>
+</div>
     
     <button class="action-btn" style="margin-top:14px; background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="analyzeEEGFile()">Analyze EEG</button>
     
@@ -356,10 +360,10 @@
                 }
             });
             function triggerEEGFileInput() { eegFileInput.click(); }
-            function analyzeEEGFile() {
-                // Only show ready message
-                document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:#a855f7;'>EEG analysis triggered (not connected)</span>`;
-            }
+            <div id="eeg-results-container">
+                 <div id="eeg-emotion-result"></div>
+                <img id="eeg-graph-display" src="" style="display:none; width:100%; border-radius:10px; margin-top:10px;"></img>
+            </div>
             </script>
         </section>
 

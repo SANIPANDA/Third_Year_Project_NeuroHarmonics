@@ -17,6 +17,14 @@ from google import genai
 
 import random
 
+import pandas as pd
+import numpy as np
+import joblib
+from processor import EEGProcessor
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+proc = EEGProcessor(fs=256)
+
 # Setup Gemini (Use an Environment Variable for the API Key!)
 client = genai.Client(api_key="AIzaSyAHNxqL07XaIfR_Xk3xiEvTzr86kYtTyIA")
 
@@ -426,7 +434,11 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
     )
 
     try:
-        response = client.models.generate_content(prompt)
+        # FIXED SYNTAX:
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
         parts = response.text.split('|')
         return {
             "name": parts[0].strip(),
@@ -435,7 +447,7 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
         }
     except Exception as e:
         print(f"API Error: {e}")
-        return {"name": "Brisk Walking", "benefit": "Stabilizes heart rate and brain activity.", "keyword": "walking"}
+        return {"name": "Yoga", "benefit": "Balances neural activity.", "keyword": "yoga"}
 
 
 @app.route('/predict', methods=['POST'])
@@ -444,26 +456,69 @@ def predict():
         return jsonify({"error": "No file uploaded"}), 400
         
     file = request.files['file']
-    path = "temp_eeg.csv"
-    file.save(path)
-    
-    try:
-        # 1. Process via your 'engine'
-        pred_emotion, dom_wave = predict_emotion_from_file(path)
-        
-        # 2. Get AI recommendations
-        rec = get_exercise_recommendation(dom_wave, pred_emotion)
-        
-        # 3. Return JSON for the JavaScript to handle
-        return jsonify({
-            "emotion": pred_emotion,
-            "wave": dom_wave,
-            "recommendation": rec
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
 
+    # Ensure upload directory exists
+    upload_dir = "uploads/eeg"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    temp_path = os.path.join(upload_dir, secure_filename(file.filename))
+    file.save(temp_path)
+
+    try:
+        # Step 1–7: Feature Extraction
+        features_matrix = proc.process_signal(temp_path)
+        
+        if len(features_matrix) == 0:
+            return jsonify({"error": "No features extracted"}), 400
+
+        # Step 7: Average features
+        avg_features = np.mean(features_matrix, axis=0).reshape(1, -1)
+
+        # Step 8–10: Prediction
+        probs_dict, raw_prediction, confidence_val = proc.predict_emotion(avg_features)
+
+        # ✅ FIX: Ensure integer conversion (handles numpy.int64)
+        pred_label = int(raw_prediction)
+
+        # ✅ FINAL LABEL MAP (as per your requirement)
+        NUM_TO_EMOTION = {
+            0: "Angry",
+            1: "Happy",
+            2: "Sad",
+            3: "Tired"
+        }
+
+        mood_text = NUM_TO_EMOTION.get(pred_label, "Unknown")
+
+        # Step 10: Dominant Brain Wave
+        band_names = list(proc.bands.keys())
+        dom_wave = str(band_names[int(np.argmax(avg_features))])
+
+        # Step 11: Graph + Recommendation
+        graph_base64 = proc.generate_plot(probs_dict)
+        rec = get_exercise_recommendation(dom_wave, mood_text)
+
+        # Cleanup
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        return jsonify({
+            "emotion": mood_text,
+            "confidence": f"{round(float(confidence_val) * 100, 2)}%",
+            "wave": dom_wave,
+            "recommendation": rec,
+            "graph": graph_base64
+        })
+
+    except Exception as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        logging.error(f"Prediction Error: {e}")
+        return jsonify({"error": str(e)}), 500
+    
+    
 if __name__ == "__main__":
-    print("Database URI configured. The app will connect to the database on first use.")
-    app.run(debug=True)
+    # This keeps the server running until you press Ctrl+C
+    app.run(host='0.0.0.0', port=5000, debug=True)
