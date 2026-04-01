@@ -169,7 +169,13 @@ document.addEventListener('visibilitychange', () => {
     try {
         if (document.visibilityState === 'visible') {
             const pausedByOther = localStorage.getItem(LS_KEY_PAUSED_BY_OTHER) === '1';
-            if (pausedByOther && musicPlayer && musicPlayer.paused) {
+            
+            // ADDED THIS CHECK:
+            const recAudio = document.getElementById('recommendationAudio');
+            const isRecPlaying = recAudio && !recAudio.paused;
+
+            // Only resume if it was paused by other AND nothing is currently playing now
+            if (pausedByOther && musicPlayer && musicPlayer.paused && !isRecPlaying) {
                 musicPlayer.play().catch(() => {});
                 localStorage.removeItem(LS_KEY_PAUSED_BY_OTHER);
             }

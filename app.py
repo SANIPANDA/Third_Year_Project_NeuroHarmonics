@@ -23,20 +23,41 @@ import numpy as np
 import joblib
 from processor import EEGProcessor
 
+import os
+import base64
+import cv2
+from tensorflow.keras.models import load_model
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 proc = EEGProcessor(fs=256)
 
-# Setup Gemini (Use an Environment Variable for the API Key!)
-client = genai.Client(api_key="AIzaSyAHNxqL07XaIfR_Xk3xiEvTzr86kYtTyIA")
+# Get the absolute path to the model to ensure it works in deployment
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, 'models', 'emotiondetector.h5')
+
+# Load model (Only once!)
+face_emotion_model = load_model(MODEL_PATH)
+EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
+
+# DEBUG LINES:
+print(f"Checking for .env file: {os.path.exists('.env')}")
+print(f"Gemini Key loaded: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
+
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_KEY)
 
 # --- database utilities ------------------------------------------------
 
-SUPABASE_URL = "https://rlbpjxrwgsurkbbtfyqy.supabase.co" 
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsYnBqeHJ3Z3N1cmtiYnRmeXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNzkyMTEsImV4cCI6MjA4Nzc1NTIxMX0.fSiYOkbSjP7JsZGxNlT0J5sXmUuxrz2c-iiuCvjSNA0"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_database_uri():
-    uri = "postgresql://postgres:06kingbeast_2328@db.rlbpjxrwgsurkbbtfyqy.supabase.co:5432/postgres"
+    uri = os.getenv("DATABASE_URL")
     try:
         engine = sqlalchemy.create_engine(uri)
         print("Database URI initialized.")
@@ -98,9 +119,7 @@ def dashboard():
         return redirect("/login")
     
     try:
-        # 1. Get the current user object
         user = User.query.filter_by(username=session['username']).first()
-        # 2. Fetch Community Messages (existing logic)
         messages = CommunityMessage.query.order_by(CommunityMessage.timestamp.asc()).limit(50).all()
         # 3. Fetch private inquiries sent by this user that have an admin reply
         personal_inquiries = ContactMessage.query.filter_by(user_id=user.id).all()
@@ -112,7 +131,9 @@ def dashboard():
     if not user:
         return redirect("/login")
     return render_template("dashboard/dashboard.html",
-                           user=user, 
+                           user=user,
+                           SUPABASE_URL=os.getenv("SUPABASE_URL"),
+                           SUPABASE_KEY=os.getenv("SUPABASE_KEY"), 
                            username=user.username, 
                            community_messages=messages,
                            inquiries=personal_inquiries)
@@ -156,7 +177,7 @@ YOGA_LIST = [
         "description": "An advanced inversion that increases blood flow to the brain and challenges neural focus."
     },
     {
-        "title": "Child's Pose (Balasana)",
+        "title": "Child Pose (Balasana)",
         "video": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1772135116/childpose_rezjh3.mp4", 
         "thumbnail": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461677/childpose_oliylc.jpg", 
         "description": "A restorative posture that calms the parasympathetic nervous system and reduces mental fatigue."
@@ -185,7 +206,7 @@ def health_tips():
     elif 12 <= hour < 17:
         period = "afternoon"
         greeting = "Good Afternoon"
-    elif 17 <= hour < 21:
+    elif 17 <= hour < 20:
         period = "evening"
         greeting = "Good Evening"
     else:
@@ -488,29 +509,29 @@ WELLNESS_DATA = {
     "evening": [
         {
             "text": "Dimming environmental lights 2 hours before bed triggers the natural release of melatonin, signaling your brain to prepare for recovery.",
-            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/evening_calm"
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650976/evening_calm_ysdgtw.png"
         },
         {
             "text": "Engaging in light, low-impact stretching helps lower cortisol levels and releases physical tension accumulated throughout the day.",
-            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/evening_stretch"
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650980/evening_stretch_f9rker.png"
         },
         {
             "text": "Practicing 'Digital Sunset'—turning off notifications an hour before bed—reduces cognitive load and prevents sleep-disrupting dopamine spikes.",
-            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/evening_digital_fast"
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650976/evening_digital_fast_toxce9.png"
         }
     ],
     "night": [
         {
             "text": "Maintaining a bedroom temperature of 18°C (65°F) is scientifically proven to facilitate the transition into deep, restorative REM sleep.",
-            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/night_sleep"
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650990/night_sleep_dcshgm.png"
         },
         {
-            "text": "Practicing deep rhythmic breathing (4-7-8 method) activates the parasympathetic nervous system, effectively quieting a racing mind.",
-            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/night_breath"
+            "text": "Your body temperature naturally drops at night to initiate sleep; keeping your room cool (around 18°C) helps your brain sync with this biological rhythm.",
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650990/night_temp_u14rej.png"
         },
         {
             "text": "Writing a 'Brain Dump' list of tomorrow's tasks clears working memory, allowing the brain to enter a deeper state of relaxation.",
-            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1/wellness/night_journal"
+            "image": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1774650990/night_journal_yyae95.png"
         }
     ]
 }
@@ -551,8 +572,8 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
         return {"name": "Yoga", "benefit": "Balances neural activity.", "keyword": "yoga"}
 
 
-@app.route('/predict', methods=['POST'])
-def predict():
+@app.route('/predict_eeg', methods=['POST'])
+def predict_eeg():
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
         
@@ -662,6 +683,34 @@ def reply_message():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
+    
+
+@app.route('/predict_face', methods=['POST'])
+def predict_face_emotion():
+    try:
+        data = request.json.get('image')
+        if not data:
+            return jsonify({"error": "No image data"}), 400
+
+        # 1. Decode base64 string
+        encoded_data = data.split(',')[1]
+        nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        # 2. Preprocess (Standard for FER2013 models)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # Optional: Add Haar Cascade face detection here for better accuracy
+        resized = cv2.resize(gray, (48, 48))
+        normalized = resized.astype('float32') / 255.0
+        reshaped = np.reshape(normalized, (1, 48, 48, 1))
+
+        # 3. Predict
+        preds = face_emotion_model.predict(reshaped)
+        label = EMOTION_LABELS[np.argmax(preds)]
+
+        return jsonify({"emotion": label})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     # This keeps the server running until you press Ctrl+C

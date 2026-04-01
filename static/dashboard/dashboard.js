@@ -230,7 +230,7 @@ async function analyzeData() {
 
     try {
         // CHANGED: URL points to /predict to match your @app.route
-        const response = await fetch("http://127.0.0.1:5000/predict", { 
+        const response = await fetch("http://127.0.0.1:5000/predict_eeg", { 
             method: "POST", 
             body: formData 
         });
@@ -411,7 +411,7 @@ async function analyzeEEGFile() {
     recSection.style.display = "none";
 
     try {
-        const response = await fetch("/predict", { 
+        const response = await fetch("/predict_eeg", { 
             method: "POST", 
             body: formData 
         });

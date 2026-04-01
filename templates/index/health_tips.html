@@ -53,28 +53,25 @@
     </div>
 </section>
 
-    <!-- Music Recommendations Section -->
-    <div class="music-section">
-      <h2 class="section-title">{{ time_greeting }}! 🎵</h2>
-      <p class="section-subtitle">We've picked some perfect music for you based on the time of day</p>
-      <div class="video-gallery-grid">
-        {% for music in music_recommendations %}
-          {% set music_url = music.music_path %}
-          {% set thumb_url = music.thumbnail %}
-          
-          <div class="video-card" onclick="playMusicCard('{{ music_url }}')">
-              <div class="video-thumb-container">
-                    <img class="video-thumb" src="{{ thumb_url }}" alt="{{ music.title }} thumbnail">
-                    <button class="play-btn">
-                        <i class="fas fa-play"></i>
-                    </button>
-              </div>
-              <div class="video-title">{{ music.title }}</div>
-              <div class="video-quote">"{{ music.quote }}"</div>
-          </div>
-        {% endfor %}
+<div class="music-section">
+  <h2 class="section-title">{{ time_greeting }}! 🎵</h2>
+  <p class="section-subtitle">Neuro-optimized tracks for your current neural state</p>
+  
+  <div class="video-gallery-grid">
+    {% for music in music_recommendations %}
+    <div class="video-card music-card" onclick='playMusicCard({{ music.music_path | tojson }}, this)'>
+      <div class="video-thumb-container">
+        <img class="video-thumb" src="{{ music.thumbnail }}" alt="{{ music.title }}">
+        <button class="play-btn">
+          <i class="fas fa-play"></i>
+        </button>
       </div>
+      <div class="video-title">{{ music.title }}</div>
+      <div class="video-quote">"{{ music.quote }}"</div>
     </div>
+    {% endfor %}
+  </div>
+</div>
 
     <!-- Hidden audio element for playing music -->
     <audio id="recommendationAudio"></audio>
@@ -161,107 +158,11 @@
     <!-- Three.js canvas for visual effect -->
     <div id="threejs-bg"></div>
   </main>
-  <script src="{{ url_for('static', filename='music_player.js') }}"></script>
-  <script>
-    function playMusicCard(src) {
-      var audio = document.getElementById('recommendationAudio');
-      if(window.musicPlayer && window.musicPlayer.pause) window.musicPlayer.pause();
-      audio.src = src;
-      audio.play();
-      audio.onended = function() {
-        if(window.musicPlayer && window.musicPlayer.play) window.musicPlayer.play();
-      };
-    }
-  </script>
-</body>
-</html>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-    // Video modal logic
-    function playVideo(src, title) {
-      document.getElementById('modalVideo').src = src;
-      document.getElementById('modalTitle').innerText = title;
-      document.getElementById('videoModal').style.display = 'block';
-    }
-    function playYogaVideo(src, title, thumb) {
-      document.getElementById('modalVideo').src = src;
-      document.getElementById('modalTitle').innerText = title;
-      document.getElementById('videoModal').style.display = 'block';
-    }
-    function closeModal() {
-      document.getElementById('videoModal').style.display = 'none';
-      document.getElementById('modalVideo').pause();
-      document.getElementById('modalVideo').src = '';
-    }
-    window.onclick = function(event) {
-      var modal = document.getElementById('videoModal');
-      if (event.target == modal) closeModal();
-    }
-
-    // Subtle Three.js animated background (particles)
-    let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    let renderer = new THREE.WebGLRenderer({ alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.getElementById('threejs-bg').appendChild(renderer.domElement);
-    camera.position.z = 8;
-    // Create particles
-    let particles = new THREE.Group();
-    let particleMaterial = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.25 });
-    for (let i = 0; i < 80; i++) {
-      let geo = new THREE.SphereGeometry(Math.random() * 0.18 + 0.08, 12, 12);
-      let mesh = new THREE.Mesh(geo, particleMaterial.clone());
-      mesh.position.set(
-        (Math.random() - 0.5) * 16,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 8
-      );
-      mesh.material.opacity = Math.random() * 0.18 + 0.08;
-      particles.add(mesh);
-    }
-    scene.add(particles);
-    function animate() {
-      requestAnimationFrame(animate);
-      particles.rotation.y += 0.0008;
-      particles.rotation.x += 0.0003;
-      renderer.render(scene, camera);
-    }
-    animate();
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
-  
-  <script>
-    // Music card player logic
-    function playMusicCard(musicSrc) {
-      // Pause background music
-      if (window.musicPlayer && window.musicPlayer.pauseForOtherMusic) {
-        window.musicPlayer.pauseForOtherMusic();
-      }
-      
-      // Play the selected music
-      const audio = document.getElementById('recommendationAudio');
-      audio.src = musicSrc;
-      audio.play();
-    }
-    
-    function resumeBackgroundMusic() {
-      // Resume background music when recommendation music ends
-      if (window.musicPlayer && window.musicPlayer.resumeAfterOtherMusic) {
-        window.musicPlayer.resumeAfterOtherMusic();
-      }
-    }
-  </script>
-  
   <script src="{{ url_for('static', filename='index/tips.js') }}"></script>
   <script src="{{ url_for('static', filename='index/script.js') }}"></script>
-
-<!-- Music Player Script -->
-<script src="{{ url_for('static', filename='music_player.js') }}"></script>
+  <script src="{{ url_for('static', filename='music_player.js') }}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>  
 
 </body>
 </html>
