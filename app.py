@@ -712,6 +712,26 @@ def predict_face_emotion():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/save_eeg_result', methods=['POST'])
+def save_eeg_result():
+    data = request.json
+    try:
+        # Replace 'eeg_history' with your actual Supabase table name
+        response = supabase_ctx.table('eeg_reports').insert({
+            "user_id": data.get('user_id'),
+            "filename": data.get('filename'),
+            "emotion_detected": data.get('emotion'),
+            "confidence": str(data.get('confidence')), # Schema says text, ensure it's a string
+            "dominant_wave": data.get('dominant_wave'),
+            "recommendation_name": data.get('recommendation_name'),
+            "recommendation_benefit": data.get('recommendation_benefit'),
+            "graph_base64": data.get('graph')
+        }).execute()
+        return jsonify({"success: {result.data}": True}), 200
+    except Exception as e:
+        print(f"Error saving to Supabase: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == "__main__":
     # This keeps the server running until you press Ctrl+C
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -349,7 +349,7 @@ function updateFileLabel() {
     }
 }
 
-const eegFileInput = document.getElementById('eegFile');
+eegFileInput = document.getElementById('eegFile');
 const fileStatus = document.getElementById('file-status');
 const fileNameDisplay = document.getElementById('file-name-display');
 
@@ -377,7 +377,7 @@ eegFileInput.addEventListener('change', (e) => {
 });
 
 // Update your existing Drag & Drop 'drop' listener to use this function too
-const eegDropArea = document.getElementById('eeg-drop-area');
+eegDropArea = document.getElementById('eeg-drop-area');
 eegDropArea.addEventListener('drop', (e) => {
     e.preventDefault();
     eegDropArea.classList.remove('drag-over');
@@ -394,8 +394,6 @@ async function analyzeEEGFile() {
     const recSection = document.getElementById("ai-wellness-recommendation");
     const recText = document.getElementById("rec-text");
     const recMusic = document.getElementById("rec-music");
-    
-    // Add an ID to your image tag in HTML to show the graph
     const graphImg = document.getElementById("eeg-graph-display"); 
 
     if (!fileInput.files.length) {
@@ -403,14 +401,18 @@ async function analyzeEEGFile() {
         return;
     }
 
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+    // Capture the file object to get the name
+    const selectedFile = fileInput.files[0];
 
-    // UI Feedback: Show analyzing state
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    // UI Feedback
     resultBox.innerHTML = "🔍 <span style='color:#a855f7;'>Analyzing Brainwaves... Please wait.</span>";
     recSection.style.display = "none";
 
     try {
+        // 1. Get Prediction from ML Model
         const response = await fetch("/predict_eeg", { 
             method: "POST", 
             body: formData 
@@ -421,25 +423,48 @@ async function analyzeEEGFile() {
         if (data.error) {
             resultBox.innerHTML = `<span style="color:red">Error: ${data.error}</span>`;
         } else {
-            // 1. Show Emotion Result and Confidence
+            // 2. Show Emotion Result
             resultBox.innerHTML = `State: <b style="color:#4f46e5">${data.emotion}</b> (${data.confidence} confidence)`;
             
-            // 2. Display the Matplotlib Bar Graph
+            // 3. Display Graph
             if (graphImg && data.graph) {
                 graphImg.src = "data:image/png;base64," + data.graph;
                 graphImg.style.display = "block";
             }
 
-            // 3. Show AI Recommendation (Exercise + Music)
+            // 4. Show AI Recommendation
             recText.innerText = `${data.recommendation.name}: ${data.recommendation.benefit}`;
-            
-            // Note: If your Python Gemini function returns 'keyword', we use it here
             recMusic.innerHTML = `🎵 Suggested Sound: <b>${data.recommendation.keyword || 'Ambient Flow'}</b>`;
-            
-            // 4. Reveal the recommendation section
             recSection.style.display = "block";
-            
-            // Trigger music player if you have one
+
+            // --- STEP 5: Save to Supabase via Backend ---
+            try {
+                const saveResponse = await fetch("/api/save_eeg_result", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: typeof currentUserId !== 'undefined' ? currentUserId : null,
+                        filename: selectedFile.name, // Explicitly sending the filename
+                        emotion: data.emotion,
+                        confidence: data.confidence,
+                        dominant_wave: data.wave || "N/A", // Added based on your schema
+                        recommendation_name: data.recommendation.name,
+                        recommendation_benefit: data.recommendation.benefit,
+                        graph: data.graph // Sending base64 for graph_base64 column
+                    })
+                });
+
+                if (saveResponse.ok) {
+                    console.log("✅ EEG Report saved to Supabase successfully.");
+                } else {
+                    const errorDetails = await saveResponse.json();
+                    console.error("❌ DB Save Error:", errorDetails.error);
+                }
+            } catch (saveError) {
+                console.error("❌ Network error during DB save:", saveError);
+            }
+            // --------------------------------------------
+
             if(typeof playSuggestedMusic === "function") {
                 playSuggestedMusic(data.recommendation.keyword);
             }
@@ -458,12 +483,12 @@ function resetEEGDisplay() {
 }
 
 // Initialize Supabase Client (Ensure these vars are available)
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 function initRealtimeInbox() {
     const statusEl = document.getElementById('connection-status');
 
-    const channel = supabase
+    const channel = supabaseClient
         .channel('schema-db-changes')
         .on(
             'postgres_changes',
@@ -572,3 +597,19 @@ async function fetchAdminMessages() {
         }, 500);
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Grab the elements by their correct IDs from your HTML
+    const dropArea = document.getElementById('eeg-drop-area');
+    const fileInput = document.getElementById('eegFile');
+
+    // 2. Check if they exist to avoid the "null" error
+    if (dropArea && fileInput) {
+        // 3. Add the click listener to the container
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+    }
+});
+
+console.log("js ended");

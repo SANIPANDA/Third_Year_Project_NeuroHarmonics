@@ -145,15 +145,20 @@
     </div>
     <input type="file" id="eegFile" accept=".csv,.edf,.txt" style="display:none;" />
     
-    <button type="button" class="action-btn" onclick="document.getElementById('eegFile').click()">
+    <button type="button" class="action-btn">
         Select EEG File
     </button>
 </div>
     
     <button class="action-btn" style="margin-top:14px; background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="analyzeEEGFile()">Analyze EEG</button>
     
-    <div id="eeg-emotion-result" class="emotion-result" style="margin-top: 15px; font-weight: bold; text-align: center;"></div>
-    
+    <div id="eeg-emotion-result" class="emotion-result" style="margin-top: 15px; font-weight: bold; text-align: center;">
+        <div id="eeg-results-container">
+            <div id="eeg-emotion-result"></div>
+                <img id="eeg-graph-display" src="" style="display:none; width:100%; border-radius:10px; margin-top:10px;"></img>
+        </div>
+    </div>
+
     <div id="ai-wellness-recommendation" style="margin-top: 10px; display: none; padding: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
         <h4 style="color: #4f46e5; margin-bottom: 5px;">🤖 AI Neuro-Tip:</h4>
         <p id="rec-text" style="font-size: 0.9em; line-height: 1.4; color: #333;"></p>
@@ -183,174 +188,7 @@
                 color: #7c3aed;
             }
             </style>
-            <script>
-                        // Refresh button logic for face card
-                        document.addEventListener('DOMContentLoaded', function() {
-                            document.getElementById('refresh-face').onclick = function() {
-                                // Reset file input
-                                const faceFileInput = document.getElementById('faceFile');
-                                faceFileInput.value = '';
-                                // Reset webcam
-                                const video = document.getElementById('camera');
-                                if (video && video.srcObject) {
-                                    const tracks = video.srcObject.getTracks();
-                                    tracks.forEach(track => track.stop());
-                                    video.srcObject = null;
-                                    video.style.display = 'none';
-                                }
-                                // Hide capture button
-                                const captureBtn = document.getElementById('captureBtn');
-                                if (captureBtn) captureBtn.style.display = 'none';
-                                // Reset result
-                                document.getElementById('emotion-result').innerHTML = '<span style="color:#a855f7;">Drop an image or use webcam to analyze emotion.</span>';
-                            };
-                            // Refresh button logic for eeg card
-                            document.getElementById('refresh-eeg').onclick = function() {
-                                // Reset EEG drag-and-drop area and result (customize as needed)
-                                const eegDropArea = document.getElementById('eeg-drop-area');
-                                if (eegDropArea) eegDropArea.classList.remove('drag-over');
-                                // Reset EEG file input if exists
-                                const eegFileInput = document.getElementById('eegFile');
-                                if (eegFileInput) eegFileInput.value = '';
-                                // Reset EEG result
-                                const eegResult = document.getElementById('eeg-emotion-result');
-                                if (eegResult) eegResult.innerHTML = '<span style="color:#a855f7;">Drop EEG data here to analyze emotion.</span>';
-                            };
-                        });
-            async function analyzeFaceEmotion() {
-                const resultDiv = document.getElementById('emotion-result');
-                // Try to get image from file input or webcam
-                let imageData = null;
-                // 1. Check file input
-                const fileInput = document.getElementById('faceFile');
-                if (fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
-                    if (!file.type.startsWith('image/')) {
-                        resultDiv.innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
-                        return;
-                    }
-                    // Read as base64
-                    imageData = await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(reader.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(file);
-                    });
-                } else {
-                    // 2. Try webcam capture
-                    const video = document.getElementById('camera');
-                    if (video && video.style.display !== 'none' && (video.videoWidth > 0 && video.videoHeight > 0)) {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth || 180;
-                        canvas.height = video.videoHeight || 140;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        imageData = canvas.toDataURL('image/png');
-                    }
-                }
-                if (!imageData) {
-                    resultDiv.innerHTML = `<span style='color:red;'>Please select an image or use the webcam.</span>`;
-                    return;
-                }
-                resultDiv.innerHTML = `<span style='color:#a855f7;'>Analyzing...</span>`;
-                try {
-                    const res = await fetch('http://172.18.132.46:8000/predict', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData })
-                    });
-                    if (!res.ok) throw new Error('API error');
-                    const data = await res.json();
-                    if (data.emotion || data.dominantEmotion) {
-                        resultDiv.innerHTML = `<span class='emotion-label'>Emotion: ${data.emotion || data.dominantEmotion}</span>`;
-                    } else {
-                        resultDiv.innerHTML = `<span style='color:red;'>No emotion detected.</span>`;
-                    }
-                } catch (err) {
-                    resultDiv.innerHTML = `<span style='color:red;'>Error analyzing face.</span>`;
-                }
-            }
-            // --- Face Detection Drag & Drop and Webcam ---
-            const faceDropArea = document.getElementById('face-drop-area');
-            const faceFileInput = document.getElementById('faceFile');
-                // Only allow drag-and-drop for file input
-                faceDropArea.addEventListener('dragover', e => { e.preventDefault(); faceDropArea.classList.add('drag-over'); });
-                faceDropArea.addEventListener('dragleave', () => faceDropArea.classList.remove('drag-over'));
-                faceDropArea.addEventListener('drop', e => {
-                    e.preventDefault();
-                    faceDropArea.classList.remove('drag-over');
-                    const file = e.dataTransfer.files[0];
-                    if (file && file.type.startsWith('image/')) {
-                        faceFileInput.files = e.dataTransfer.files;
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Image ready for analysis</span>`;
-                    } else {
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
-                    }
-                });
-                faceFileInput.addEventListener('change', e => {
-                    const file = e.target.files[0];
-                    if (file && file.type.startsWith('image/')) {
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Image ready for analysis</span>`;
-                    } else {
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
-                    }
-                });
-            // Webcam logic
-            let stream = null;
-            function startFaceDetection() {
-                const video = document.getElementById('camera');
-                const captureBtn = document.getElementById('captureBtn');
-                video.style.display = 'block';
-                captureBtn.style.display = 'inline-block';
-                navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(s => {
-                        stream = s;
-                        video.srcObject = stream;
-                    })
-                    .catch(err => {
-                        alert('Camera access denied.');
-                    });
-            }
-            function captureAndAnalyzeFace() {
-                // Only capture, not analyze
-                const video = document.getElementById('camera');
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth || 180;
-                canvas.height = video.videoHeight || 140;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Face image captured (not connected)</span>`;
-            }
-            // --- EEG Drag & Drop ---
-            const eegDropArea = document.getElementById('eeg-drop-area');
-            const eegFileInput = document.getElementById('eegFile');
-            eegDropArea.addEventListener('click', () => eegFileInput.click());
-            eegDropArea.addEventListener('dragover', e => { e.preventDefault(); eegDropArea.classList.add('drag-over'); });
-            eegDropArea.addEventListener('dragleave', () => eegDropArea.classList.remove('drag-over'));
-            eegDropArea.addEventListener('drop', e => {
-                e.preventDefault();
-                eegDropArea.classList.remove('drag-over');
-                const file = e.dataTransfer.files[0];
-                if (file && (file.name.endsWith('.edf') || file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
-                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:#a855f7;'>EEG file ready for analysis (not connected)</span>`;
-                } else {
-                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
-                }
-            });
-            eegFileInput.addEventListener('change', e => {
-                const file = e.target.files[0];
-                if (file && (file.name.endsWith('.edf') || file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
-                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:#a855f7;'>EEG file ready for analysis (not connected)</span>`;
-                } else {
-                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
-                }
-            });
-            function triggerEEGFileInput() { eegFileInput.click(); }
-            <div id="eeg-results-container">
-                 <div id="eeg-emotion-result"></div>
-                <img id="eeg-graph-display" src="" style="display:none; width:100%; border-radius:10px; margin-top:10px;"></img>
             </div>
-            </script>
         </section>
 
         <section id="support" class="content-section" style="display:none;">
@@ -539,13 +377,196 @@
     </form>
   </div>
 </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const currentUserId = {{ session.get('user_id') or 0 }};
+        const SB_URL = "{{ SUPABASE_URL }}";
+        const SB_KEY = "{{ SUPABASE_KEY }}";
+    </script>
     <script src="{{ url_for('static', filename='dashboard/dashboard.js') }}"></script>
-</body>
-<!-- Three.js Animation Background -->
 <canvas id="three-bg"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
+            <script>
+            
+            function resetEEGDisplay() {
+                const eegResult = document.getElementById('eeg-emotion-result');
+                const eegGraph = document.getElementById('eeg-graph-display');
+                if (eegDropArea) eegDropArea.classList.remove('drag-over');
+                if (eegFileInput) eegFileInput.value = '';
+                if (eegResult) eegResult.innerHTML = '<span style="color:#a855f7;">Drop EEG data here to analyze emotion.</span>';
+                if (eegGraph) {
+                    eegGraph.src = '';
+                    eegGraph.style.display = 'none';
+                }
+            }
+
+                        // Refresh button logic for face card
+                        document.addEventListener('DOMContentLoaded', function() {
+                            document.getElementById('refresh-face').onclick = function() {
+                                // Reset file input
+                                const faceFileInput = document.getElementById('faceFile');
+                                faceFileInput.value = '';
+                                // Reset webcam
+                                const video = document.getElementById('camera');
+                                if (video && video.srcObject) {
+                                    const tracks = video.srcObject.getTracks();
+                                    tracks.forEach(track => track.stop());
+                                    video.srcObject = null;
+                                    video.style.display = 'none';
+                                }
+                                // Hide capture button
+                                const captureBtn = document.getElementById('captureBtn');
+                                if (captureBtn) captureBtn.style.display = 'none';
+                                // Reset result
+                                document.getElementById('emotion-result').innerHTML = '<span style="color:#a855f7;">Drop an image or use webcam to analyze emotion.</span>';
+                            };
+                            // Refresh button logic for eeg card
+                            document.getElementById('refresh-eeg').onclick = function() {
+                                if (eegDropArea) eegDropArea.classList.remove('drag-over');
+                                if (eegFileInput) eegFileInput.value = '';
+                                // Reset EEG result
+                                const eegResult = document.getElementById('eeg-emotion-result');
+                                if (eegResult) eegResult.innerHTML = '<span style="color:#a855f7;">Drop EEG data here to analyze emotion.</span>';
+                            };
+                        });
+            async function analyzeFaceEmotion() {
+                const resultDiv = document.getElementById('emotion-result');
+                // Try to get image from file input or webcam
+                let imageData = null;
+                // 1. Check file input
+                const fileInput = document.getElementById('faceFile');
+                if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    if (!file.type.startsWith('image/')) {
+                        resultDiv.innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
+                        return;
+                    }
+                    // Read as base64
+                    imageData = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                } else {
+                    // 2. Try webcam capture
+                    const video = document.getElementById('camera');
+                    if (video && video.style.display !== 'none' && (video.videoWidth > 0 && video.videoHeight > 0)) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 180;
+                        canvas.height = video.videoHeight || 140;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        imageData = canvas.toDataURL('image/png');
+                    }
+                }
+                if (!imageData) {
+                    resultDiv.innerHTML = `<span style='color:red;'>Please select an image or use the webcam.</span>`;
+                    return;
+                }
+                resultDiv.innerHTML = `<span style='color:#a855f7;'>Analyzing...</span>`;
+                try {
+                    const res = await fetch('http://172.18.132.46:8000/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: imageData })
+                    });
+                    if (!res.ok) throw new Error('API error');
+                    const data = await res.json();
+                    if (data.emotion || data.dominantEmotion) {
+                        resultDiv.innerHTML = `<span class='emotion-label'>Emotion: ${data.emotion || data.dominantEmotion}</span>`;
+                    } else {
+                        resultDiv.innerHTML = `<span style='color:red;'>No emotion detected.</span>`;
+                    }
+                } catch (err) {
+                    resultDiv.innerHTML = `<span style='color:red;'>Error analyzing face.</span>`;
+                }
+            }
+            // --- Face Detection Drag & Drop and Webcam ---
+            const faceDropArea = document.getElementById('face-drop-area');
+            const faceFileInput = document.getElementById('faceFile');
+                // Only allow drag-and-drop for file input
+                faceDropArea.addEventListener('dragover', e => { e.preventDefault(); faceDropArea.classList.add('drag-over'); });
+                faceDropArea.addEventListener('dragleave', () => faceDropArea.classList.remove('drag-over'));
+                faceDropArea.addEventListener('drop', e => {
+                    e.preventDefault();
+                    faceDropArea.classList.remove('drag-over');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        faceFileInput.files = e.dataTransfer.files;
+                        document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Image ready for analysis</span>`;
+                    } else {
+                        document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
+                    }
+                });
+                faceFileInput.addEventListener('change', e => {
+                    const file = e.target.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Image ready for analysis</span>`;
+                    } else {
+                        document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
+                    }
+                });
+            // Webcam logic
+            let stream = null;
+            function startFaceDetection() {
+                const video = document.getElementById('camera');
+                const captureBtn = document.getElementById('captureBtn');
+                video.style.display = 'block';
+                captureBtn.style.display = 'inline-block';
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(s => {
+                        stream = s;
+                        video.srcObject = stream;
+                    })
+                    .catch(err => {
+                        alert('Camera access denied.');
+                    });
+            }
+            function captureAndAnalyzeFace() {
+                // Only capture, not analyze
+                const video = document.getElementById('camera');
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 180;
+                canvas.height = video.videoHeight || 140;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Face image captured (not connected)</span>`;
+            }
+            // --- EEG Drag & Drop ---
+            const eegDropArea = document.getElementById('eeg-drop-area');
+            let eegFileInput = document.getElementById('eegFile');
+
+
+            eegDropArea.addEventListener('click', (e) => {
+                // If the user clicked the button specifically, stop the event here
+                if (e.target.tagName === 'BUTTON') {
+                    return; 
+                }
+                eegFileInput.click();
+            });
+            eegDropArea.addEventListener('dragover', e => { e.preventDefault(); eegDropArea.classList.add('drag-over'); });
+            eegDropArea.addEventListener('dragleave', () => eegDropArea.classList.remove('drag-over'));
+            eegDropArea.addEventListener('drop', e => {
+                e.preventDefault();
+            eegDropArea.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file && (file.name.endsWith('.edf') || file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:#a855f7;'>EEG file ready for analysis (not connected)</span>`;
+                } else {
+                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
+                }
+            });
+            eegFileInput.addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (file && (file.name.endsWith('.edf') || file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:#a855f7;'>EEG file ready for analysis (not connected)</span>`;
+                } else {
+                    document.getElementById('eeg-emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
+                }
+            });
+            function triggerEEGFileInput() { eegFileInput.click(); }
+ 
 // Simple floating spheres animation for neural effect
 const canvas = document.getElementById('three-bg');
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
@@ -583,9 +604,6 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
 });
 </script>
-</html>
-
-<!-- Music Player Script -->
 <script src="{{ url_for('static', filename='music_player.js') }}"></script>
 <script>
     function toggleMusicPanel() {
@@ -594,7 +612,14 @@ window.addEventListener('resize', () => {
         const btn = document.getElementById('playPauseBtn');
         btn.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
     }
-    document.getElementById('playPauseBtn').addEventListener('click', function() {
-        this.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
-    });
+
+// The ?. prevents the error if playPauseBtn is missing
+document.getElementById('playPauseBtn')?.addEventListener('click', function() {
+    this.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying 
+        ? '<i class="fas fa-pause"></i>' 
+        : '<i class="fas fa-play"></i>';
+});
+    
 </script>
+</body>
+</html>
