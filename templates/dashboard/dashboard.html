@@ -111,7 +111,33 @@
                 <h3><i class="fas fa-brain"></i> Weekly Brainwave Trends</h3>
                 <div class="placeholder-chart"></div>
             </div>
+            <div class="calendar-card glass">
+                <div class="calendar-controls">
+                    <button id="prevMonth" class="nav-btn">❮</button>
+                    <h2 id="monthDisplay">Month Year</h2>
+                    <button id="nextMonth" class="nav-btn">❯</button>
+                </div>
+                
+                <div class="calendar-weekdays">
+                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                
+                <div id="calendarGrid" class="calendar-grid">
+                    </div>
+            </div>
         </section>
+
+        <div id="analysisModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content glass">
+        <div class="modal-header">
+            <h2>Neural Session Details</h2>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        <hr class="modal-divider">
+        <div id="modalBody">
+            </div>
+    </div>
+</div>
 
         <section id="live-analysis" class="content-section" style="display:none;">
             <h1>Live Analysis</h1>
@@ -189,6 +215,16 @@
             }
             </style>
             </div>
+            <div class="eeg-analysis-results">
+    <p id="eeg-emotion-result">State: <span style="color: #a855f7;">Awaiting Data...</span></p>
+
+    <div id="graph-container" style="margin-top: 20px; text-align: center;">
+        <img id="eeg-graph-display" 
+             src="" 
+             alt="Neural Wave Distribution" 
+             style="display: none; max-width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
+    </div>
+</div>
         </section>
 
         <section id="support" class="content-section" style="display:none;">
@@ -220,6 +256,22 @@
 </div>
             </div>
         </section>
+
+<section id="recommendations" class="content-section" style="display:none;">
+    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>AI Wellness Hub</h1>
+        <button class="action-btn" onclick="window.generateNewAIRecommendation()">Generate New</button>
+    </div>
+
+    <div class="carousel-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center; gap: 20px;">
+        <button class="nav-arrow" onclick="moveCarousel(-1)"><i class="fas fa-chevron-left"></i></button>
+
+        <div id="ai-rec-container" class="recommendations-carousel" style="display: flex; overflow: hidden; width: 100%; max-width: 400px; scroll-behavior: smooth;">
+            </div>
+
+        <button class="nav-arrow" onclick="moveCarousel(1)"><i class="fas fa-chevron-right"></i></button>
+    </div>
+</section>
 
         <section id="community" class="content-section" style="display:none;">
     <h1>Community Chat</h1>
@@ -466,11 +518,12 @@
                 }
                 resultDiv.innerHTML = `<span style='color:#a855f7;'>Analyzing...</span>`;
                 try {
-                    const res = await fetch('http://172.18.132.46:8000/predict', {
+                    const res = await fetch('/predict_face', { // Use relative path if on the same server
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData })
+                        body: JSON.stringify({ image: imageData }) // imageData should be a Base64 string
                     });
+
                     if (!res.ok) throw new Error('API error');
                     const data = await res.json();
                     if (data.emotion || data.dominantEmotion) {

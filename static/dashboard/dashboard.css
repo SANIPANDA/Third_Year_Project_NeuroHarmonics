@@ -1015,3 +1015,235 @@ body.modal-open {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+#eeg-graph-display {
+    max-width: 100%;
+    height: auto;
+    margin-top: 15px;
+    border-radius: 12px;
+    /* Remove any fixed height that might be squishing it */
+}
+
+/* Ensure the result container can grow */
+.result-box-class-name { 
+    height: auto !important; 
+    min-height: 100px;
+}
+
+/* Container for the whole calendar */
+.calendar-card {
+    width: 100%;
+    max-width: 900px; /* Adjust based on your layout */
+    margin: 20px auto;
+    padding: 25px;
+    background: rgba(20, 10, 40, 0.6); /* Darker purple for contrast */
+    border-radius: 20px;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+/* Navigation layout */
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* The Grid - This is where the magic happens */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* Force 7 equal columns */
+    gap: 12px;
+    width: 100%;
+}
+
+/* Header for days (Sun, Mon...) */
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    color: #a855f7;
+    margin-bottom: 10px;
+}
+
+/* Individual Day Styles */
+.day {
+    aspect-ratio: 1 / 1; /* Keep them perfectly square */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: 0.3s transform ease;
+}
+
+.day:hover {
+    transform: scale(1.05);
+    background: rgba(168, 85, 247, 0.2);
+}
+
+#calendarGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 7 equal columns */
+    grid-auto-rows: 1fr; /* Equal height rows */
+    gap: 10px;
+    width: 100%;
+    margin-top: 15px;
+}
+
+/* Ensure the modal graph doesn't explode the popup size */
+.modal-graph-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    margin: 10px 0;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.2);
+}
+
+.report-entry {
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+}
+
+/* Mood-specific glows */
+.mood-happy { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+.mood-sad { background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; }
+.mood-angry { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; }
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .calendar-grid { gap: 4px; }
+    .day { font-size: 0.7rem; border-radius: 6px; }
+    .calendar-weekdays { font-size: 0.6rem; }
+}
+
+/* Full-screen background dim */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Darken background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Stay on top of everything */
+    backdrop-filter: blur(8px);
+}
+
+/* The Popup Box */
+.modal-content {
+    background: rgba(30, 20, 50, 0.95);
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    padding: 30px;
+    border-radius: 24px;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    overflow-y: auto;
+    position: relative;
+    color: white;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.close-modal {
+    font-size: 30px;
+    cursor: pointer;
+    color: #a855f7;
+}
+
+.close-modal:hover {
+    color: #ef4444;
+}
+
+.modal-divider {
+    border: 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 15px 0;
+}
+
+/* Recommendations Grid Layout */
+.recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+/* AI Recommendation Card */
+.ai-card {
+    border-radius: 20px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.ai-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(168, 85, 247, 0.15);
+}
+
+.ai-card-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-card-body {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.7);
+    flex-grow: 1;
+}
+
+.emotion-tag {
+    background: #a855f7;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Loading Animation for Sparkle effect */
+.ai-gen-btn i {
+    animation: sparkle 1.5s infinite;
+}
+
+@keyframes sparkle {
+    0% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.5; transform: scale(1); }
+}
+
+.nav-arrow {
+        background: rgba(168, 85, 247, 0.2);
+        border: none;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: 0.3s;
+        z-index: 10;
+    }
+    .nav-arrow:hover { background: #a855f7; }
+    .recommendations-carousel {
+        padding: 10px;
+        min-height: 400px;
+    }

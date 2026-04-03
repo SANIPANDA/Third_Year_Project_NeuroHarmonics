@@ -413,7 +413,7 @@ async function analyzeEEGFile() {
 
     try {
         // 1. Get Prediction from ML Model
-        const response = await fetch("/predict_eeg", { 
+        const response = await fetch("http://127.0.0.1:5000/predict_eeg", { 
             method: "POST", 
             body: formData 
         });
@@ -427,9 +427,19 @@ async function analyzeEEGFile() {
             resultBox.innerHTML = `State: <b style="color:#4f46e5">${data.emotion}</b> (${data.confidence} confidence)`;
             
             // 3. Display Graph
-            if (graphImg && data.graph) {
-                graphImg.src = "data:image/png;base64," + data.graph;
-                graphImg.style.display = "block";
+            if (data.graph) {
+                const graphImg = document.getElementById("eeg-graph-display");
+                if (graphImg) {
+                    // Essential: Add the data prefix so the browser recognizes it as an image
+                    graphImg.src = "data:image/png;base64," + data.graph;
+                    
+                    // Essential: Overwrite "display: none" from your CSS
+                    graphImg.style.display = "block"; 
+                    graphImg.style.visibility = "visible";
+                    graphImg.style.opacity = "1";
+                    
+                    console.log("Graph rendered successfully.");
+                }
             }
 
             // 4. Show AI Recommendation
@@ -610,6 +620,266 @@ document.addEventListener('DOMContentLoaded', () => {
             fileInput.click();
         });
     }
+});
+
+// Global state for navigation
+let navDate = new Date(); 
+
+async function renderCalendar() {
+    const grid = document.getElementById("calendarGrid");
+    const monthDisplay = document.getElementById("monthDisplay");
+    
+    // 1. Setup Dates
+    const year = navDate.getFullYear();
+    const month = navDate.getMonth();
+    
+    // Display Month Name and Year
+    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(navDate);
+    monthDisplay.innerText = `${monthName} ${year}`;
+
+    // 2. Calculate Grid
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const prevLastDay = new Date(year, month, 0).getDate();
+    
+    grid.innerHTML = ""; // Clear current view
+
+    // 3. Fetch Data for this specific Month from Supabase
+    // Format: YYYY-MM
+    const monthQuery = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const reports = await fetchReportsForMonth(monthQuery);
+
+    // 4. Create Day Squares
+    // Previous Month's trailing days (faded)
+    for (let x = firstDayIndex; x > 0; x--) {
+        grid.innerHTML += `<div class="day prev-date">${prevLastDay - x + 1}</div>`;
+    }
+
+    // Current Month's days
+    for (let i = 1; i <= lastDay; i++) {
+        const fullDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        
+        // Filter reports that match this day
+        const dayData = reports.filter(r => r.created_at.startsWith(fullDateStr));
+        
+        // Determine Mood color class
+        let moodClass = "";
+        if (dayData.length > 0) {
+            moodClass = `mood-${dayData[0].emotion_detected.toLowerCase()}`;
+        }
+
+        const daySquare = document.createElement('div');
+        daySquare.className = `day ${moodClass} ${isToday(i, month, year) ? 'today' : ''}`;
+        daySquare.innerHTML = `<span>${i}</span>`;
+        
+        // Click event to open the Detailed Analysis Popup
+        daySquare.onclick = () => openAnalysisModal(dayData, fullDateStr);
+        grid.appendChild(daySquare);
+    }
+}
+
+// Helper: Navigation Buttons
+document.getElementById('prevMonth').addEventListener('click', () => {
+    navDate.setMonth(navDate.getMonth() - 1);
+    renderCalendar();
+});
+
+document.getElementById('nextMonth').addEventListener('click', () => {
+    navDate.setMonth(navDate.getMonth() + 1);
+    renderCalendar();
+});
+
+// Helper: Fetch from Backend
+async function fetchReportsForMonth(monthStr) {
+    try {
+        const response = await fetch(`/api/get_reports?month=${monthStr}`);
+        return await response.json();
+    } catch (e) {
+        console.error("Calendar fetch error:", e);
+        return [];
+    }
+}
+
+function isToday(day, month, year) {
+    const today = new Date();
+    return day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+}
+
+// Initialize on load
+// This ensures the calendar renders as soon as the dashboard loads
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Dashboard loaded, initializing calendar...");
+    renderCalendar(); 
+});
+
+// Make sure this is NOT inside renderCalendar()
+function openAnalysisModal(reports, date) {
+    const modal = document.getElementById("analysisModal");
+    const body = document.getElementById("modalBody");
+    
+    if (!modal || !body) return;
+
+    modal.style.display = "flex";
+    modal.style.opacity = "1";
+
+    if (!reports || reports.length === 0) {
+        body.innerHTML = `<div class="no-data">No neural data recorded for ${date}.</div>`;
+        return;
+    }
+
+    body.innerHTML = reports.map(r => `
+        <div class="report-entry glass">
+            <h4>File: ${r.filename}</h4>
+            <div class="report-stats">
+                <p>🧠 <b>Mood:</b> ${r.emotion_detected}</p>
+                <p>📉 <b>Confidence:</b> ${r.confidence}</p>
+                <p>🌊 <b>Wave:</b> ${r.dominant_wave}</p>
+            </div>
+            <img src="data:image/png;base64,${r.graph_base64}" class="modal-graph-img">
+            <p class="rec-note"><b>AI Suggestion:</b> ${r.recommendation_name}</p>
+        </div>
+        <hr class="modal-divider">
+    `).join("");
+}
+
+function closeModal() {
+    document.getElementById("analysisModal").style.display = "none";
+}
+
+async function triggerAiGen() {
+    const container = document.getElementById('ai-cards-container');
+    const currentEmotion = document.getElementById('eeg-emotion-result').innerText || "Calm";
+    
+    container.innerHTML = '<div class="glass-card">✨ Gemini is crafting your neural wellness plan...</div>';
+
+    try {
+        const response = await fetch('/generate_ai_recommendation', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ emotion: currentEmotion, wave: "Alpha" })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            loadRecommendations(); // Refresh the list
+        }
+    } catch (err) {
+        console.error("AI Generation failed:", err);
+    }
+}
+
+async function loadRecommendations() {
+    const container = document.getElementById('ai-cards-container');
+    const { data, error } = await supabaseClient
+        .from('recommendation')
+        .select('*')
+        .order('id', { ascending: false });
+
+    if (data) {
+        container.innerHTML = data.map(rec => `
+            <div class="glass-card" style="padding:0; overflow:hidden;">
+                <img src="${rec.image_url || 'https://via.placeholder.com/300x150'}" style="width:100%; height:150px; object-fit:cover;">
+                <div style="padding:15px;">
+                    <span class="badge" style="background:#a855f7; font-size:0.7em;">${rec.emotion}</span>
+                    <p style="margin-top:10px; font-size:0.9em;">${rec.content}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Example of how the JS will inject the content
+function createCardHTML(rec) {
+    return `
+        <div class="ai-card glass">
+            <img src="${rec.image_url}" class="ai-card-image" alt="Neural Wellness Vision">
+            <div class="ai-card-body">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <span class="emotion-tag">${rec.emotion}</span>
+                    <small style="color:#888;"><i class="far fa-calendar-alt"></i> ${new Date().toLocaleDateString()}</small>
+                </div>
+                <p style="color: #333; line-height: 1.6; font-size: 0.95rem; margin-bottom: 20px;">
+                    ${rec.content}
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="action-btn" style="padding: 8px 15px; font-size: 0.8rem; background: #4f46e5;">
+                        <i class="fas fa-play"></i> Suggested Track
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// --- AI RECOMMENDATION SYSTEM ---
+
+let recIndex = 0;
+let allRecommendations = [];
+
+window.generateNewAIRecommendation = async function() {
+    // Call the backend as we did before
+    const response = await fetch('/generate_ai_recommendation', { 
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        emotion: "Happy", 
+        wave: "Alpha" 
+    })
+});
+    const result = await response.json();
+    
+    if (result.success) {
+        await window.loadRecommendations(); // Reload list from DB
+    } else {
+        alert(result.error || "Generation failed");
+    }
+};
+
+window.loadRecommendations = async function() {
+    const container = document.getElementById('ai-rec-container');
+    
+    const { data, error } = await supabaseClient
+        .from('recommendation')
+        .select('*')
+        .order('id', { ascending: false });
+
+    if (data && data.length > 0) {
+        allRecommendations = data;
+        recIndex = 0; // Show the latest one
+        updateCarouselUI();
+    }
+};
+
+window.moveCarousel = function(direction) {
+    recIndex += direction;
+    // Loop around logic
+    if (recIndex < 0) recIndex = allRecommendations.length - 1;
+    if (recIndex >= allRecommendations.length) recIndex = 0;
+    
+    updateCarouselUI();
+};
+
+function updateCarouselUI() {
+    const container = document.getElementById('ai-rec-container');
+    const rec = allRecommendations[recIndex];
+    
+    container.innerHTML = `
+        <div class="ai-card glass slide-in" style="min-width: 100%; box-sizing: border-box;">
+            <img src="${rec.image_url || 'https://via.placeholder.com/400x200'}" class="ai-card-image">
+            <div class="ai-card-body">
+                <span class="emotion-tag">${rec.emotion}</span>
+                <p style="margin-top:15px; color:#333;">${rec.content}</p>
+                <div style="text-align:right; font-size:0.8em; color:#888; margin-top:10px;">
+                    Entry ${recIndex + 1} of ${allRecommendations.length}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.loadRecommendations();
 });
 
 console.log("js ended");

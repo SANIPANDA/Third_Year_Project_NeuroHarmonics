@@ -178,24 +178,64 @@ class EEGProcessor:
     # ==============================
     # PLOT
     # ==============================
-    def generate_plot(self, emotion_probs):
+    def generate_plot(self, probs_dict):
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import io
+        import base64
 
-        plt.figure(figsize=(6, 4))
+        # 1. Prepare the Data from Probability Dictionary
+        # This ensures the graph shows the ACTUAL confidence per mood
+        if isinstance(probs_dict, dict):
+            moods = list(probs_dict.keys())
+            # Convert 0.0-1.0 probabilities to 0-100 percentages
+            percentages = [val * 100 for val in probs_dict.values()]
+        else:
+            # Fallback if raw features are accidentally passed
+            moods = ['Tired', 'Sad', 'Happy', 'Angry']
+            features = np.array(probs_dict, copy=True).flatten()
+            total = np.sum(features)
+            percentages = [(v / total) * 100 if total > 0 else 25 for v in features]
+
+        # 2. Configure the Plot Size
+        plt.figure(figsize=(4, 3)) 
         plt.clf()
 
-        colors = ['#FF4B4B', '#1C83E1', '#808080', '#2ECC71']
+        # 3. Apply the Purple Aesthetic
+        # Using a distinct palette for each mood to make them distinguishable
+        purple_palette = ['#7b2ff2', '#9d4edd', '#c8b6ff', '#e0aaff', '#4f46e5']
+        
+        # Create the bar chart
+        bars = plt.bar(moods, percentages, color=purple_palette[:len(moods)], alpha=0.9, width=0.6)
 
-        plt.bar(emotion_probs.keys(), emotion_probs.values(), color=colors[:len(emotion_probs)])
+        # 4. Styling for Dark/Purple Dashboard
+        plt.title('Neural Confidence vs. Mood', fontsize=10, fontweight='bold', color='#e0aaff', pad=15)
+        plt.ylim(0, 110) # 110 allows space for the percentage text on top
+        plt.ylabel('Probability (%)', fontsize=8, color='#e0aaff')
+        
+        # Remove borders and style axis to blend with glassmorphism
+        ax = plt.gca()
+        ax.set_facecolor('none')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#5a189a')
+        ax.spines['bottom'].set_color('#5a189a')
+        
+        plt.tick_params(colors='#e0aaff', labelsize=8)
+        plt.grid(axis='y', linestyle='--', alpha=0.1)
 
-        plt.ylim(0, 1)
-        plt.ylabel('Confidence')
-        plt.title('Emotion Detection Results')
+        # 5. Add Percentage Labels (The "Real Data" Check)
+        # This places the exact confidence score on top of each bar
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height + 2,
+                    f'{height:.1f}%', ha='center', va='bottom', 
+                    color='#e0aaff', fontsize=8, fontweight='bold')
 
+        # 6. Save with Transparency and Encode
         img = io.BytesIO()
-        plt.savefig(img, format='png', bbox_inches='tight')
-        img.seek(0)
-
-        plot_url = base64.b64encode(img.getvalue()).decode()
+        plt.savefig(img, format='png', bbox_inches='tight', transparent=True, dpi=100)
         plt.close()
 
+        plot_url = base64.b64encode(img.getvalue()).decode('utf-8')
         return plot_url

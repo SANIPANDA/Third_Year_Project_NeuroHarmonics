@@ -30,6 +30,8 @@ from tensorflow.keras.models import load_model
 
 from dotenv import load_dotenv
 
+import traceback
+
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -558,7 +560,7 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
     try:
         # FIXED SYNTAX:
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="models/gemini-1.5-flash",
             contents=prompt
         )
         parts = response.text.split('|')
@@ -571,9 +573,70 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
         print(f"API Error: {e}")
         return {"name": "Yoga", "benefit": "Balances neural activity.", "keyword": "yoga"}
 
+model = EEGProcessor()  # Initialize the processor with the correct sampling frequency
+
+@app.route('/generate_ai_recommendation', methods=['POST'])
+def generate_ai_recommendation():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "User not logged in"}), 401
+    
+    try:
+        # 1. Fetch latest EEG report
+        # Empty .select() defaults to "*" and avoids positional argument errors
+        latest_report = supabase_ctx.table("eeg_reports") \
+            .select() \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .limit(1) \
+            .execute()
+
+        if not latest_report.data:
+            return jsonify({"error": "No EEG data found. Please analyze a file first."}), 404
+
+        report = latest_report.data[0]
+        emotion = report.get('emotion_detected', 'Neutral')
+        wave = report.get('dominant_wave', 'Alpha')
+
+        # 2. Gemini Recommendation (Using updated model path)
+        prompt = f"The user has {wave} brainwaves and feels {emotion}. Provide one quick wellness exercise and one music genre suggestion in 2 short sentences."
+        
+        # Try-catch specifically for the AI call to debug 404s
+        try:
+            response = client.models.generate_content(
+                model="models/gemini-1.5-flash", 
+                contents=prompt
+            )
+            ai_content = response.text.strip()
+        except Exception as ai_err:
+            print(f"Gemini API Error: {ai_err}")
+            ai_content = f"Focus on deep breathing to balance your {wave} waves." # Fallback
+
+        # 3. Save and Return
+        image_url = f"https://picsum.photos/seed/{emotion}/400/300"
+        
+        supabase_ctx.table("recommendation").insert({
+            "user_id": user_id,
+            "emotion": emotion,
+            "content": ai_content,
+            "image_url": image_url
+        }).execute()
+
+        return jsonify({
+            "success": True, 
+            "content": ai_content, 
+            "image_url": image_url,
+            "emotion": emotion
+        })
+
+    except Exception as e:
+        print(f"General Route Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/predict_eeg', methods=['POST'])
 def predict_eeg():
+    avg_features = None 
+    temp_path = None
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
         
@@ -589,14 +652,15 @@ def predict_eeg():
     file.save(temp_path)
 
     try:
+        avg_features = None
         # Step 1–7: Feature Extraction
         features_matrix = proc.process_signal(temp_path)
         
-        if len(features_matrix) == 0:
-            return jsonify({"error": "No features extracted"}), 400
+        if features_matrix is None or len(features_matrix) == 0:
+            return jsonify({"error": "EEG processing failed. Data might be too noisy or short."}), 400
 
         # Step 7: Average features
-        avg_features = np.mean(features_matrix, axis=0).reshape(1, -1)
+        avg_features = np.mean(features_matrix, axis=0).reshape(1, -1).copy()
 
         # Step 8–10: Prediction
         probs_dict, raw_prediction, confidence_val = proc.predict_emotion(avg_features)
@@ -638,6 +702,8 @@ def predict_eeg():
         if os.path.exists(temp_path):
             os.remove(temp_path)
         logging.error(f"Prediction Error: {e}")
+        print("--- DETAILED ERROR TRACKING ---")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -697,40 +763,99 @@ def predict_face_emotion():
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        # 2. Preprocess (Standard for FER2013 models)
+        # 2. Preprocess
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # Optional: Add Haar Cascade face detection here for better accuracy
         resized = cv2.resize(gray, (48, 48))
         normalized = resized.astype('float32') / 255.0
         reshaped = np.reshape(normalized, (1, 48, 48, 1))
 
         # 3. Predict
         preds = face_emotion_model.predict(reshaped)
-        label = EMOTION_LABELS[np.argmax(preds)]
+        
+        # Get index and confidence
+        idx = np.argmax(preds)
+        label = EMOTION_LABELS[idx]
+        confidence_val = float(preds[0][idx]) * 100
 
-        return jsonify({"emotion": label})
+        # 4. Generate the graph using the raw predictions (probabilities)
+        # We pass 'preds' because it contains the bar values for the graph
+        plot_base64 = model.generate_plot(preds)
+
+        # 5. Get Recommendation (Make sure this function exists)
+        rec = model.get_recommendation(label)
+
+        # 6. Final unified response
+        return jsonify({
+            "emotion": label,
+            "confidence": f"{confidence_val:.2f}%",
+            "graph": plot_base64,
+            "recommendation": rec
+        })
+
     except Exception as e:
+        print(f"Face Predict Error: {e}")
+        return jsonify({"error": str(e)}), 500
+    
+from datetime import datetime, timedelta
+
+@app.route('/api/get_reports')
+def get_reports():
+    month_str = request.args.get('month') # e.g., "2026-04"
+    user_id = session.get('user_id')
+
+    if not user_id or not month_str:
+        return jsonify([])
+
+    try:
+        # Calculate start and end of the month
+        start_date = f"{month_str}-01T00:00:00Z"
+        
+        # Determine the first day of the NEXT month
+        year, month = map(int, month_str.split('-'))
+        if month == 12:
+            end_date = f"{year + 1}-01-01T00:00:00Z"
+        else:
+            end_date = f"{year}-{month + 1:02d}-01T00:00:00Z"
+
+        # Query using GTE (Greater than or equal) and LT (Less than)
+        query = supabase_ctx.table("eeg_reports")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .gte("created_at", start_date)\
+            .lt("created_at", end_date)\
+            .order("created_at", desc=True)\
+            .execute()
+
+        return jsonify(query.data)
+    except Exception as e:
+        print(f"SQL Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/save_eeg_result', methods=['POST'])
 def save_eeg_result():
     data = request.json
+    # Get user_id from session if it's missing from the request
+    user_id = data.get('user_id') or session.get('user_id')
+    
     try:
-        # Replace 'eeg_history' with your actual Supabase table name
         response = supabase_ctx.table('eeg_reports').insert({
-            "user_id": data.get('user_id'),
+            "user_id": user_id,
             "filename": data.get('filename'),
             "emotion_detected": data.get('emotion'),
-            "confidence": str(data.get('confidence')), # Schema says text, ensure it's a string
+            "confidence": str(data.get('confidence')), 
             "dominant_wave": data.get('dominant_wave'),
             "recommendation_name": data.get('recommendation_name'),
             "recommendation_benefit": data.get('recommendation_benefit'),
-            "graph_base64": data.get('graph')
+            "graph_base64": data.get('graph'),
+            "admin_summary": None # Ensure this is initialized as null
         }).execute()
-        return jsonify({"success: {result.data}": True}), 200
+        
+        return jsonify({"success": True, "message": "Report synced"}), 200
     except Exception as e:
-        print(f"Error saving to Supabase: {e}")
+        print(f"Supabase Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+    
+
 
 if __name__ == "__main__":
     # This keeps the server running until you press Ctrl+C
