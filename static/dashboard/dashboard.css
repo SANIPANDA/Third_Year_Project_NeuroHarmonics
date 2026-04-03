@@ -907,6 +907,13 @@ body.modal-open {
     flex: 1;
 }
 
+/* Game thumbnail fix */
+.game-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 /* ================= ANIMATIONS ================= */
 
 .animate-float {

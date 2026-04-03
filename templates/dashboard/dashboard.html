@@ -297,9 +297,42 @@
         <section id="references" class="content-section" style="display:none;">
             <h1>Games & References</h1>
             <div class="games-grid">
+                <!-- PACMAN -->
                 <div class="game-card glass-card">
                     <div class="game-thumbnail">
-                        <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1774675399/space_invaders_lmueni.webp" alt="Space Invaders">
+                        <img src="{{ url_for('static', filename='../games/PythonPacman-main/pacman_thumbnail.jpeg') }}" alt="Pacman">
+                        <div class="game-overlay">
+                            <button class="play-btn" onclick="launchGame('pacman')">
+                                <i class="fas fa-play"></i> Play
+                            </button>
+                        </div>
+                    </div>
+                    <div class="game-info">
+                        <h3>Pacman Classic</h3>
+                        <p>Eat dots and avoid ghosts!</p>
+                    </div>
+                </div>
+                
+                <!-- FLAPPY BIRD -->
+                <div class="game-card glass-card">
+                    <div class="game-thumbnail">
+                        <img src="{{ url_for('static', filename='../games/flappy-bird-python-master/flappy_thumbnail.jpeg') }}" alt="Flappy Bird">
+                        <div class="game-overlay">
+                            <button class="play-btn" onclick="launchGame('flappy')">
+                                <i class="fas fa-play"></i> Play
+                            </button>
+                        </div>
+                    </div>
+                    <div class="game-info">
+                        <h3>Flappy Bird</h3>
+                        <p>Flap through the pipes!</p>
+                    </div>
+                </div>
+                
+                <!-- SPACE INVADERS -->
+                <div class="game-card glass-card">
+                    <div class="game-thumbnail">
+                        <img src="{{ url_for('static', filename='../games/space/Python-Space-Invaders-Game-with-Pygame-main/preview.jpg') }}" alt="Space Invaders">
                         <div class="game-overlay">
                             <button class="play-btn" onclick="launchGame('space_invaders')">
                                 <i class="fas fa-play"></i> Play
@@ -308,7 +341,7 @@
                     </div>
                     <div class="game-info">
                         <h3>Space Invaders</h3>
-                        <p>Classic arcade game - Defend against waves of alien invaders!</p>
+                        <p>Defend against alien invasion!</p>
                     </div>
                 </div>
             </div>

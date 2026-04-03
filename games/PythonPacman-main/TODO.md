@@ -1,0 +1,1 @@
+# TODO: Run Pacman Game (COMPLETE)\n\n- [x] Step 1: Check/activate venv\n- [x] Step 2: Install pygame if needed\n- [x] Step 3: Run python pacman.py\n- [x] Step 4: Verify game launches\n\nGame is running! Use arrow keys to play. To restart: (venv) python pacman.py

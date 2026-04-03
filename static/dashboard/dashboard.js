@@ -883,3 +883,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 console.log("js ended");
+
+// Games launcher
+function launchGame(gameId) {
+    const endpoint = `/play_${gameId.replace('-', '_')}`;
+    fetch(endpoint)
+        .then(response => {
+            if (response.ok) {
+                console.log(`${gameId} launched successfully`);
+            } else {
+                console.error(`Failed to launch ${gameId}`);
+            }
+        })
+        .catch(err => {
+            console.error('Game launch error:', err);
+        });
+}

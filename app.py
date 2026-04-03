@@ -14,7 +14,7 @@ from datetime import datetime
 from supabase import create_client, Client
 from werkzeug.utils import secure_filename
 
-from google import genai
+# from google import genai  # Disabled for game demo
 
 import random
 
@@ -50,23 +50,18 @@ print(f"Checking for .env file: {os.path.exists('.env')}")
 print(f"Gemini Key loaded: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
 
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_KEY)
+# client = genai.Client(api_key=GEMINI_KEY)  # Disabled for demo
 
 # --- database utilities ------------------------------------------------
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# SUPABASE_URL = os.getenv("SUPABASE_URL")
+# SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)  # Disabled for game demo
 
 def get_database_uri():
-    uri = os.getenv("DATABASE_URL")
-    try:
-        engine = sqlalchemy.create_engine(uri)
-        print("Database URI initialized.")
-        return uri
-    except Exception as e:
-        print(f"Database connection error: {e}")
-        return uri
+    uri = os.getenv("DATABASE_URL", "sqlite:///neuroharmonics.db")
+    print(f"Using DB: {uri}")
+    return uri
 
 print("Starting NeuroHarmonics Flask app...")
 app = Flask(__name__)
@@ -856,6 +851,24 @@ def save_eeg_result():
         return jsonify({"success": False, "error": str(e)}), 500
     
 
+
+@app.route('/play_pacman')
+def play_pacman():
+    import subprocess
+    subprocess.Popen(['python', 'pacman.py'], cwd='games/PythonPacman-main')
+    return jsonify({'status': 'Pacman launched in new terminal'})
+
+@app.route('/play_flappy')
+def play_flappy():
+    import subprocess  
+    subprocess.Popen(['python', 'flappybird.py'], cwd='games/flappy-bird-python-master/flappy-bird-python-master')
+    return jsonify({'status': 'Flappy Bird launched in new terminal'})
+
+@app.route('/play_space_invaders')
+def play_space_invaders():
+    import subprocess
+    subprocess.Popen(['python', 'main.py'], cwd='games/space/Python-Space-Invaders-Game-with-Pygame-main')
+    return jsonify({'status': 'Space Invaders launched in new terminal'})
 
 if __name__ == "__main__":
     # This keeps the server running until you press Ctrl+C
