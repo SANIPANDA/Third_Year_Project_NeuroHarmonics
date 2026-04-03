@@ -299,6 +299,33 @@ def update_profile():
         print(f"Update Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/launch-game', methods=['POST'])
+def launch_game():
+    if 'username' not in session:
+        return jsonify({'success': False, 'error': 'Login required'}), 401
+    
+    data = request.get_json()
+    game = data.get('game')
+    
+    game_map = {
+'space_invaders': 'games/space/main.py',
+        'flappy_bird': 'games/flappy-bird-python-master/flappybird.py',
+'pacman': 'games/PythonPacman-main/pacman.py'
+    }
+    
+    if game not in game_map:
+        return jsonify({'success': False, 'error': f'Unknown game: {game}'}), 400
+    
+    try:
+        import subprocess
+        import os
+        script_dir = os.path.dirname(os.path.abspath(game_map[game]))
+        import subprocess
+        proc = subprocess.Popen(['python', os.path.basename(game_map[game])], cwd=script_dir, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        return jsonify({'success': True, 'message': f'{game} launched in new window!'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == "__main__":
     print("Database URI configured. The app will connect to the database on first use.")
     app.run(debug=True)

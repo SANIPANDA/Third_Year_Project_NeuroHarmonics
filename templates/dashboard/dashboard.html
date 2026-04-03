@@ -405,9 +405,10 @@
         <section id="references" class="content-section" style="display:none;">
             <h1>Games & References</h1>
             <div class="games-grid">
+                <!-- Space Invaders -->
                 <div class="game-card glass-card">
                     <div class="game-thumbnail">
-                        <img src="{{ url_for('static', filename='Space-Invaders-Pygame-master.png') }}" alt="Space Invaders">
+                        <img src="{{ url_for('static', filename='games/space/space_invaders_thumbnail.png') }}" alt="Space Invaders" onerror="this.src='https://via.placeholder.com/300x200/1a0b2e/9d4edd?text=Space+Invaders'">
                         <div class="game-overlay">
                             <button class="play-btn" onclick="launchGame('space_invaders')">
                                 <i class="fas fa-play"></i> Play
@@ -416,7 +417,37 @@
                     </div>
                     <div class="game-info">
                         <h3>Space Invaders</h3>
-                        <p>Classic arcade game - Defend against waves of alien invaders!</p>
+                        <p>Classic arcade - Defend against alien waves!</p>
+                    </div>
+                </div>
+                <!-- Flappy Bird -->
+                <div class="game-card glass-card">
+                    <div class="game-thumbnail">
+                        <img src="{{ url_for('static', filename='games/flappy-bird-python-master/flappy_thumbnail.jpeg') }}" alt="Flappy Bird" onerror="this.src='https://via.placeholder.com/300x200/1a0b2e/9d4edd?text=Flappy+Bird'">
+                        <div class="game-overlay">
+                            <button class="play-btn" onclick="launchGame('flappy_bird')">
+                                <i class="fas fa-play"></i> Play
+                            </button>
+                        </div>
+                    </div>
+                    <div class="game-info">
+                        <h3>Flappy Bird</h3>
+                        <p>Tap to flap through the pipes!</p>
+                    </div>
+                </div>
+                <!-- Pacman -->
+                <div class="game-card glass-card">
+                    <div class="game-thumbnail">
+                        <img src="{{ url_for('static', filename='games/PythonPacman-main/pacman_thumbnail.jpeg') }}" alt="Pacman" onerror="this.src='https://via.placeholder.com/300x200/1a0b2e/9d4edd?text=Pacman'">
+                        <div class="game-overlay">
+                            <button class="play-btn" onclick="launchGame('pacman')">
+                                <i class="fas fa-play"></i> Play
+                            </button>
+                        </div>
+                    </div>
+                    <div class="game-info">
+                        <h3>Pacman</h3>
+                        <p>Eat dots and avoid ghosts!</p>
                     </div>
                 </div>
             </div>

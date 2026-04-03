@@ -221,3 +221,43 @@ async function postToCommunity() {
         }
     } catch (error) { console.error("Chat error:", error); }
 }
+
+// --- 5. GAME LAUNCHER ---
+
+async function launchGame(gameName) {
+    console.log(`Launching game: ${gameName}`);
+    try {
+        const response = await fetch('/launch-game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game: gameName })
+        });
+
+        console.log(`Response status: ${response.status}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (gameName === 'space_invaders') {
+                alert('🚀 Space Invaders launching!');
+            } else {
+                alert(`🎮 ${gameName.replace('_', ' ').toUpperCase()} requested! (Backend support coming)`);
+            }
+            console.log(`${gameName} success`);
+        } else {
+            alert(`Server: ${data.error || 'Launch failed'}`);
+        }
+    } catch (error) {
+        console.error('Launch error:', error);
+        if (gameName !== 'space_invaders') {
+            alert(`${gameName.replace('_', ' ').toUpperCase()} support coming soon! Space Invaders ready.`);
+        } else {
+            alert('Launch failed. Ensure logged in & backend /launch-game works (test: cd games/space && python test_game_launch.py)');
+        }
+    }
+}
+
