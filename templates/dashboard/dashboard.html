@@ -153,11 +153,14 @@
                         </div>
                         <input type="file" id="faceFile" accept="image/*" style="display:none;" />
                         <button class="action-btn" onclick="startFaceDetection()">Use Webcam</button>
-                        <video id="camera" width="180" height="140" autoplay style="display:none;"></video>
-                        <button class="action-btn" id="captureBtn" style="display:none; margin-top:10px;" onclick="captureAndAnalyzeFace()">Capture & Analyze</button>
+                        <video id="camera" width="320" height="240" autoplay style="display:none; border-radius:8px;"></video>
+                        <canvas id="facePhoto" width="320" height="240" style="display:none; border-radius:8px; border:2px solid #a855f7;"></canvas>
+                        <button class="action-btn" id="captureBtn" style="display:none; margin-top:10px;" onclick="capturePhoto()">Capture Photo</button>
                     </div>
                     <button class="action-btn" style="margin-top:14px;" onclick="analyzeFaceEmotion()">Analyze Emotion</button>
+                    <button class="action-btn" id="viewHistory" style="margin-top:10px; background:#4f46e5;" onclick="fetchEmotionHistory()">Emotion History</button>
                     <div id="emotion-result" class="emotion-result"></div>
+                    <div id="emotionsHistory" style="display:none; margin-top:15px; max-height:200px; overflow-y:auto; background:rgba(255,255,255,0.1); border-radius:12px; padding:12px;"></div>
                 </div>
                 <!-- EEG Dataset Emotion Detection Card -->
                 <div class="analysis-card glass">
@@ -543,58 +546,128 @@
                                 if (eegResult) eegResult.innerHTML = '<span style="color:#a855f7;">Drop EEG data here to analyze emotion.</span>';
                             };
                         });
+            let capturedCanvas = null;
+            let detectedEmotion = null;
+
+            function startFaceDetection() {
+                const video = document.getElementById('camera');
+                const captureBtn = document.getElementById('captureBtn');
+                video.style.display = 'block';
+                captureBtn.style.display = 'inline-block';
+                navigator.mediaDevices.getUserMedia({ video: {width:320, height:240} })
+                    .then(s => {
+                        stream = s;
+                        video.srcObject = stream;
+                    })
+                    .catch(err => {
+                        alert('Camera access denied.');
+                    });
+            }
+
+            function capturePhoto() {
+                const video = document.getElementById('camera');
+                const canvas = document.getElementById('facePhoto');
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, 320, 240);
+                canvas.style.display = 'block';
+                video.style.display = 'none';
+                document.getElementById('captureBtn').style.display = 'none';
+                capturedCanvas = canvas;
+            }
+
             async function analyzeFaceEmotion() {
                 const resultDiv = document.getElementById('emotion-result');
-                // Try to get image from file input or webcam
                 let imageData = null;
-                // 1. Check file input
-                const fileInput = document.getElementById('faceFile');
-                if (fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
-                    if (!file.type.startsWith('image/')) {
-                        resultDiv.innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
-                        return;
-                    }
-                    // Read as base64
-                    imageData = await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(reader.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(file);
-                    });
+
+                if (capturedCanvas) {
+                    imageData = capturedCanvas.toDataURL('image/png');
                 } else {
-                    // 2. Try webcam capture
-                    const video = document.getElementById('camera');
-                    if (video && video.style.display !== 'none' && (video.videoWidth > 0 && video.videoHeight > 0)) {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth || 180;
-                        canvas.height = video.videoHeight || 140;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        imageData = canvas.toDataURL('image/png');
+                    const fileInput = document.getElementById('faceFile');
+                    if (fileInput.files[0]) {
+                        const file = fileInput.files[0];
+                        imageData = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.readAsDataURL(file);
+                        });
                     }
                 }
+
                 if (!imageData) {
-                    resultDiv.innerHTML = `<span style='color:red;'>Please select an image or use the webcam.</span>`;
+                    resultDiv.innerHTML = `<span style='color:red;'>Capture photo first or select image.</span>`;
                     return;
                 }
-                resultDiv.innerHTML = `<span style='color:#a855f7;'>Analyzing...</span>`;
-                try {
-                    const res = await fetch('/predict_face', { // Use relative path if on the same server
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData }) // imageData should be a Base64 string
-                    });
 
-                    if (!res.ok) throw new Error('API error');
+                resultDiv.innerHTML = `<span style='color:#a855f7;'>🔍 Detecting emotion...</span>`;
+
+                try {
+                    const res = await fetch('/predict_face', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({image: imageData})
+                    });
                     const data = await res.json();
-                    if (data.emotion || data.dominantEmotion) {
-                        resultDiv.innerHTML = `<span class='emotion-label'>Emotion: ${data.emotion || data.dominantEmotion}</span>`;
-                    } else {
-                        resultDiv.innerHTML = `<span style='color:red;'>No emotion detected.</span>`;
+
+                    detectedEmotion = data.emotion;
+                    const conf = data.confidence;
+
+                    resultDiv.innerHTML = `
+                        <div style="text-align:center;">
+                            <div style="font-size:1.4em; font-weight:bold; color:#4f46e5;">${data.emotion.toUpperCase()}</div>
+                            <div style="color:#a855f7; font-size:0.9em;">${conf} confidence</div>
+                        </div>
+                    `;
+
+                    // Draw overlay on photo
+                    if (capturedCanvas && detectedEmotion !== 'no face') {
+                        drawEmotionOverlay(capturedCanvas, detectedEmotion);
                     }
+
                 } catch (err) {
-                    resultDiv.innerHTML = `<span style='color:red;'>Error analyzing face.</span>`;
+                    resultDiv.innerHTML = `<span style='color:red;'>Analysis failed: ${err.message}</span>`;
+                }
+            }
+
+            function drawEmotionOverlay(canvas, emotion) {
+                const ctx = canvas.getContext('2d');
+                // Simulate face bbox (center 60% area)
+                const w = canvas.width * 0.6, h = canvas.height * 0.6;
+                const x = (canvas.width - w)/2, y = (canvas.height - h)/2;
+                
+                // Draw bbox
+                ctx.strokeStyle = '#a855f7';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x, y, w, h);
+                
+                // Emotion label bg
+                ctx.fillStyle = 'rgba(168, 85, 247, 0.9)';
+                ctx.fillRect(x, y-40, w, 35);
+                
+                // Label text
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(emotion.toUpperCase(), x + w/2, y-22);
+            }
+
+            async function fetchEmotionHistory() {
+                const historyDiv = document.getElementById('emotionsHistory');
+                try {
+                    const res = await fetch('/api/emotions');
+                    const logs = await res.json();
+                    if (logs.length === 0) {
+                        historyDiv.innerHTML = '<div style="text-align:center; color:#a855f7;">No emotions logged yet.</div>';
+                    } else {
+                        historyDiv.innerHTML = logs.map(log => 
+                            `<div style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                                ${log.emotion} <span style="color:#888; font-size:0.8em;">${new Date(log.timestamp).toLocaleString()}</span>
+                            </div>`
+                        ).join('');
+                    }
+                    historyDiv.style.display = 'block';
+                } catch (err) {
+                    historyDiv.innerHTML = '<span style="color:red;">Failed to load history.</span>';
                 }
             }
             // --- Face Detection Drag & Drop and Webcam ---

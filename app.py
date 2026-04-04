@@ -42,9 +42,24 @@ proc = EEGProcessor(fs=256)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, 'models', 'emotiondetector.h5')
 
-# Load model (Only once!)
-face_emotion_model = load_model(MODEL_PATH)
-EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
+import json
+
+def load_emotion_model():
+    try:
+        with open(os.path.join(BASE_DIR, 'models', 'emotiondetector.json'), "r") as f:
+            model_json = f.read()
+        model = model_from_json(model_json)
+        model.load_weights(os.path.join(BASE_DIR, 'models', 'emotiondetector.h5'))
+        model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        return model
+    except Exception as e:
+        print(f"Model load error: {e}")
+        return None
+
+# Load model globally (like enhanced.py)
+emotion_model = load_emotion_model()
+EMOTION_LABELS = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # DEBUG LINES:
 print(f"Checking for .env file: {os.path.exists('.env')}")
@@ -841,43 +856,60 @@ def predict_face_emotion():
         if not data:
             return jsonify({"error": "No image data"}), 400
 
-        # 1. Decode base64 string
+        # 1. Decode base64
         encoded_data = data.split(',')[1]
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        # 2. Preprocess
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        resized = cv2.resize(gray, (48, 48))
-        normalized = resized.astype('float32') / 255.0
-        reshaped = np.reshape(normalized, (1, 48, 48, 1))
 
-        # 3. Predict
-        preds = face_emotion_model.predict(reshaped)
-        
-        # Get index and confidence
-        idx = np.argmax(preds)
-        label = EMOTION_LABELS[idx]
-        confidence_val = float(preds[0][idx]) * 100
+        # 2. Face detection (from enhanced.py)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        emotion = 'no face'
 
-        # 4. Generate the graph using the raw predictions (probabilities)
-        # We pass 'preds' because it contains the bar values for the graph
-        plot_base64 = model.generate_plot(preds)
+        if len(faces) > 0:
+            # Take largest face
+            (x, y, w, h) = faces[0]
+            face = gray[y:y+h, x:x+w]
+            face = cv2.resize(face, (48, 48))
+            face = face.astype('float32') / 255.0
+            face = np.reshape(face, (1, 48, 48, 1))
 
-        # 5. Get Recommendation (Make sure this function exists)
-        rec = model.get_recommendation(label)
+            # 3. Predict
+            preds = emotion_model.predict(face, verbose=0)
+            idx = np.argmax(preds)
+            emotion = EMOTION_LABELS[idx]
+            confidence = float(preds[0][idx])
 
-        # 6. Final unified response
+        # 4. Log to DB if user logged in
+        user_id = session.get('user_id')
+        if user_id and emotion != 'no face':
+            log = EmotionLog(user_id=user_id, emotion=emotion)
+            db.session.add(log)
+            db.session.commit()
+
         return jsonify({
-            "emotion": label,
-            "confidence": f"{confidence_val:.2f}%",
-            "graph": plot_base64,
-            "recommendation": rec
+            "emotion": emotion,
+            "confidence": f"{confidence*100:.1f}%" if emotion != 'no face' else 'N/A'
         })
 
     except Exception as e:
         print(f"Face Predict Error: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/emotions', methods=['GET'])
+def get_emotions():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify([]), 401
+    
+    logs = EmotionLog.query.filter_by(user_id=user_id)\
+        .order_by(EmotionLog.timestamp.desc())\
+        .limit(50).all()
+    
+    return jsonify([{
+        "emotion": log.emotion,
+        "timestamp": log.timestamp.isoformat()
+    } for log in logs])
     
 from datetime import datetime, timedelta
 
