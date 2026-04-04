@@ -104,6 +104,33 @@
       </div>
     </div>
 
+<div class="video-section">
+  <h2 class="section-title">Animation Videos</h2>
+  <div class="video-gallery-grid">
+    {% for v in videos %}
+      <div class="video-card">
+        <div class="video-thumb-container">
+          {% if v.thumb or v.thumb_url %}
+            <img class="video-thumb" 
+                 src="{{ v.thumb_url if v.thumb_url else url_for('static', filename=v.thumb) }}" 
+                 alt="{{ v.title }} thumbnail">
+          {% endif %}
+
+          {# Use Cloudinary URL if available, otherwise fallback to local path #}
+          {% set video_final_url = v.video_url if v.video_url else url_for('static', filename=v.video_path) %}
+          
+          <button class="play-btn" onclick="playVideo('{{ video_final_url }}', '{{ v.title }}')">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+        <div class="video-title">{{ v.title }}</div>
+        <div class="video-quote">"{{ v.quote }}"</div>
+        <div class="video-tip">{{ v.tip }}</div>            
+        <div class="motivational-line" data-card-type="video"></div>          
+      </div>
+    {% endfor %}
+  </div>
+</div>
     <!-- Yoga Recommendations Section -->
     <div class="yoga-section">
       <h2 class="section-title">Yoga Recommendations for You</h2>

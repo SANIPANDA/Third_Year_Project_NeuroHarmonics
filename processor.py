@@ -14,11 +14,28 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
 
+import os
+import joblib
+from sklearn.preprocessing import StandardScaler
+
+# In processor.py __init__
+base_path = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(base_path, "models", "emotion_model.pkl")
+scaler_path = os.path.join(base_path, "models", "scaler.pkl")
+
 class EEGProcessor:
     def __init__(self, trained_classifier=None, fs=256):
         self.fs = fs
         self.classifier = trained_classifier
         self.scaler = StandardScaler()
+
+        # Get the absolute path to the directory where processor.py lives
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        # Adjust these names if your files are inside a 'models' folder
+        # e.g., os.path.join(base_path, "models", "emotion_model.pkl")
+        model_path = os.path.join(base_path, "models", "emotion_model.pkl")
+        scaler_path = os.path.join(base_path, "models", "scaler.pkl")
 
         # EEG Bands
         self.bands = {
@@ -29,13 +46,16 @@ class EEGProcessor:
             'Gamma': (30, 50)
         }
 
-        # Load trained model automatically if exists
+        # Load trained model automatically
         try:
-            self.classifier = joblib.load("emotion_model.pkl")
-            self.scaler = joblib.load("scaler.pkl")
-            print("✅ Model loaded successfully")
-        except:
-            print("⚠️ Model not found. Train first.")
+            if os.path.exists(model_path) and os.path.exists(scaler_path):
+                self.classifier = joblib.load(model_path)
+                self.scaler = joblib.load(scaler_path)
+                print(f"✅ Model & Scaler loaded successfully from {base_path}")
+            else:
+                print(f"⚠️ Model files missing at: {model_path}")
+        except Exception as e:
+            print(f"❌ Error loading model: {e}")
 
     # ==============================
     # MAIN SIGNAL PROCESSING PIPELINE
@@ -58,7 +78,9 @@ class EEGProcessor:
                 ch_types='eeg'
             )
 
-            raw = mne.io.RawArray(df.values.T, info, verbose=False)
+            # Force a float64 copy to ensure it's writable and numeric
+            data_numeric = df.values.T.astype(np.float64)
+            raw = mne.io.RawArray(data_numeric, info, verbose=False)
 
         # 2. Filtering
         raw.filter(l_freq=0.5, h_freq=50.0, verbose=False)

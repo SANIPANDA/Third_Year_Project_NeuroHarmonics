@@ -17,6 +17,7 @@ from werkzeug.utils import secure_filename
 # from google import genai  # Disabled for game demo
 
 import random
+import google.generativeai as genai
 
 import pandas as pd
 import numpy as np
@@ -49,14 +50,14 @@ EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surpri
 print(f"Checking for .env file: {os.path.exists('.env')}")
 print(f"Gemini Key loaded: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
 
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-# client = genai.Client(api_key=GEMINI_KEY)  # Disabled for demo
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai
 
 # --- database utilities ------------------------------------------------
 
-# SUPABASE_URL = os.getenv("SUPABASE_URL")
-# SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-# supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)  # Disabled for game demo
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)  # Disabled for game demo
 
 def get_database_uri():
     uri = os.getenv("DATABASE_URL", "sqlite:///neuroharmonics.db")
@@ -570,6 +571,57 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
 
 model = EEGProcessor()  # Initialize the processor with the correct sampling frequency
 
+import random
+from flask import jsonify, session
+
+# The "Neuro-Music" Database
+MUSIC_DATABASE = {
+    "happy": [
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239216/mondamusic-happy-happy-music-499182_x2fz9r.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239934/image5_fzup2w.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239142/psyai-nervous-system-regulation-for-emotional-safety-476518_qf6xtd.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239933/image2_zvr34k.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238779/psyai-gentle-regulation-after-stress-and-anxiety-476520_v61hez.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239932/image1_dfvnvk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238719/psyai-sensory-reset-for-nervous-system-balance-476524_a6ce18.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239931/image8_awemg8.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238672/psyai-alpha-drift-alpha-brainwave-ambient-focus-and-deep-relaxation-481545_fq7esi.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239930/image4_szjtkw.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238452/the_mountain-happy-kids-kids-happy-496596_vuo7uj.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image6_dxvzhs.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238448/the_mountain-happy-happy-upbeat-496594_xpulex.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image3_bjizuk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238448/the_mountain-happy-happy-music-496549_yvxtis.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image9_kluw8z.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238438/eliveta-happy-491187_vrsuah.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image7_sbwrjf.webp"},
+    ],
+    "sad": [
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239238/hirohasaimoto-silent-snowfall-2-448408_kvvikx.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239934/image5_fzup2w.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239124/psyai-nervous-system-regulation-for-emotional-safety-476518_r4a6cd.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239933/image2_zvr34k.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239111/psyai-alpha-drift-alpha-brainwave-ambient-focus-and-deep-relaxation-481545_xai8wg.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239932/image1_dfvnvk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239086/psyai-sensory-reset-for-nervous-system-balance-476524_vvvjx0.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239931/image8_awemg8.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239077/psyai-gentle-regulation-after-stress-and-anxiety-476520_t90g1e.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239930/image4_szjtkw.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239054/paulyudin-sad-sad-music-485935_ijlqcm.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image6_dxvzhs.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238496/pianocafe_kumi-emotional-pianothink-of-you-327215_dz5jfp.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image3_bjizuk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238484/nikitakondrashev-sad-510083_zjs5wk.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image9_kluw8z.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238464/paulyudin-sad-sad-music-508961_sm9icr.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image7_sbwrjf.webp"},
+    ],
+    "angry": [
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238603/solarflex-calm-soft-509916_eewmgj.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239934/image5_fzup2w.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238567/nickpanekaiassets-cello-dark-distorted-cello-quartet-instrumental-356151_l67gtn.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239933/image2_zvr34k.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238558/psyai-nervous-system-regulation-for-emotional-safety-476518_qhteul.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239932/image1_dfvnvk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238534/psyai-gentle-regulation-after-stress-and-anxiety-476520_lu1oaj.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239931/image8_awemg8.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238526/psyai-sensory-reset-for-nervous-system-balance-476524_hyxyrt.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239930/image4_szjtkw.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238523/soundgallerybydmitrytaras-dramatic-epic-305293_wa1kt1.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image6_dxvzhs.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238522/nikitakondrashev-meditation-509071_jp32uz.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image3_bjizuk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238485/psyai-alpha-drift-alpha-brainwave-ambient-focus-and-deep-relaxation-481545_wizvah.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image9_kluw8z.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238471/atlasaudio-calm-nature-510279_tadebs.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image7_sbwrjf.webp"},
+    ],
+    "tired": [
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239156/psyai-nervous-system-regulation-for-emotional-safety-476518_op4xok.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239934/image5_fzup2w.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239138/psyai-alpha-drift-alpha-brainwave-ambient-focus-and-deep-relaxation-481545_uvpjcz.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239933/image2_zvr34k.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239135/psyai-sensory-reset-for-nervous-system-balance-476524_drzpts.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239932/image1_dfvnvk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239131/psyai-gentle-regulation-after-stress-and-anxiety-476520_ef83yh.mp3", "thumb": "THUMB_URL_2"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239063/fassounds-lofi-study-calm-peaceful-chill-hop-112191_zcxcfm.mp3", "thumb": "THUMB_URL_2"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239038/fassounds-good-night-lofi-cozy-chill-music-160166_s2kcfd.mp3", "thumb": "THUMB_URL_2"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238475/lofcosmos-focus-glow-lofi-269098_glhjqq.mp3", "thumb": "THUMB_URL_2"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238462/lofcosmos-focus-lofi-269097_mjcy6n.mp3", "thumb": "THUMB_URL_2"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238424/bfcmusic-lofi-lo-fi-511230_f6ab2o.mp3", "thumb": "THUMB_URL_2"},
+    ]
+}
+
 @app.route('/generate_ai_recommendation', methods=['POST'])
 def generate_ai_recommendation():
     user_id = session.get('user_id')
@@ -577,10 +629,9 @@ def generate_ai_recommendation():
         return jsonify({"error": "User not logged in"}), 401
     
     try:
-        # 1. Fetch latest EEG report
-        # Empty .select() defaults to "*" and avoids positional argument errors
+        # 1. Fetch latest EEG report from Supabase
         latest_report = supabase_ctx.table("eeg_reports") \
-            .select() \
+            .select("*") \
             .eq("user_id", user_id) \
             .order("created_at", desc=True) \
             .limit(1) \
@@ -590,43 +641,80 @@ def generate_ai_recommendation():
             return jsonify({"error": "No EEG data found. Please analyze a file first."}), 404
 
         report = latest_report.data[0]
-        emotion = report.get('emotion_detected', 'Neutral')
+        emotion = report.get('emotion_detected', 'Happy').lower()
+        mood_options = MUSIC_DATABASE.get(emotion, MUSIC_DATABASE["happy"])
+        selected_set = random.choice(mood_options)
         wave = report.get('dominant_wave', 'Alpha')
-
-        # 2. Gemini Recommendation (Using updated model path)
-        prompt = f"The user has {wave} brainwaves and feels {emotion}. Provide one quick wellness exercise and one music genre suggestion in 2 short sentences."
         
-        # Try-catch specifically for the AI call to debug 404s
+        music_url = selected_set["music"]
+        thumb_url = selected_set["thumb"]
+
+        # 3. Gemini Prompt for Quote + 5 Tasks
+        # We use a strict delimiter '|' to easily split the response
+        prompt = f"""
+        The user has {wave} brainwaves and feels {emotion}. 
+        Provide:
+        1. One 1-sentence inspirational quote.
+        2. Five short, distinct wellness tasks (max 10 words each). 
+        If Happy: tasks to stay grounded. If Sad/Angry/Tired: tasks to energize and to stay happy.
+        Return ONLY in this format: Quote | Task1 | Task2 | Task3 | Task4 | Task5
+        """
+
+        quote = "Embrace the rhythm of your mind."
+        tasks = ["Deep breathing", "Drink water", "Stretch", "Short walk", "Smile"]
+        
         try:
             response = client.models.generate_content(
                 model="models/gemini-1.5-flash", 
                 contents=prompt
             )
-            ai_content = response.text.strip()
+            raw_parts = response.text.strip().split('|')
+            # Clean up whitespace
+            clean_parts = [p.strip() for p in raw_parts]
+            ai_text = response.text.strip()
+            
+            ai_quote = clean_parts[0]
+            ai_tasks = clean_parts[1:6] # Take the next 5 parts
         except Exception as ai_err:
-            print(f"Gemini API Error: {ai_err}")
-            ai_content = f"Focus on deep breathing to balance your {wave} waves." # Fallback
+            print(f"Gemini Error: {ai_err}")
+            ai_quote = "Trust the rhythm of your mind."
+            ai_tasks = ["Deep breathing", "Drink water", "Stretch", "Short walk", "Smile"]
 
-        # 3. Save and Return
-        image_url = f"https://picsum.photos/seed/{emotion}/400/300"
-        
-        supabase_ctx.table("recommendation").insert({
-            "user_id": user_id,
-            "emotion": emotion,
-            "content": ai_content,
-            "image_url": image_url
-        }).execute()
+            supabase_ctx.table("recommendation").insert({
+                "user_id": user_id,
+                "emotion": emotion,
+                "quote": quote,          # New Column
+                "tasks": tasks,          # New Column (ensure column type is JSON or text[])
+                "music_url": music_url,  # New Column
+                "image_url": thumb_url
+            }).execute()
 
         return jsonify({
             "success": True, 
-            "content": ai_content, 
-            "image_url": image_url,
-            "emotion": emotion
+            "quote": ai_quote,
+            "tasks": ai_tasks,
+            "image_url": thumb_url,
+            "music_url": music_url,
+            "emotion": emotion.capitalize()
         })
 
     except Exception as e:
-        print(f"General Route Error: {e}")
+        print(f"Route Error: {e}")
         return jsonify({"error": str(e)}), 500
+    
+
+videos = [
+    {
+        "title": "Zen Meditation",
+        "quote": "Peace comes from within.",
+        "tip": "Focus on your breath.",
+        "video_path": "videos/meditation.mp4", # Local fallback
+        "video_url": "https://res.cloudinary.com/demo/video/upload/v1/meditation.mp4", # Cloudinary
+        "thumb": "images/meditation_thumb.jpg", # Local fallback
+        "thumb_url": "https://res.cloudinary.com/demo/image/upload/v1/meditation_thumb.jpg" # Cloudinary
+    },
+    # ... more videos
+]
 
 @app.route('/predict_eeg', methods=['POST'])
 def predict_eeg():

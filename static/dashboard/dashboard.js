@@ -1,4 +1,8 @@
 console.log("Dashboard JS Loaded");
+
+// Reference to your main background music element
+const bgMusic = document.getElementById('bg-music-player');
+
 // --- 1. CORE NAVIGATION & UI TOGGLES ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -608,6 +612,26 @@ async function fetchAdminMessages() {
     }
 }
 
+async function fetchMonthlyReports(year, month) {
+    try {
+        // 1. Create the date object first (using current date if not provided)
+        const date = new Date(year, month); 
+
+        // 2. Now you can safely use the 'date' variable
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const monthStr = `${year}-${month}`;
+
+        // 3. Perform the fetch
+        const response = await fetch(`/api/get_reports?month=${monthStr}`);
+        const reports = await response.json();
+        
+        // ... rest of your calendar logic
+    } catch (err) {
+        console.error("Fetch Error:", err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Grab the elements by their correct IDs from your HTML
     const dropArea = document.getElementById('eeg-drop-area');
@@ -630,8 +654,8 @@ async function renderCalendar() {
     const monthDisplay = document.getElementById("monthDisplay");
     
     // 1. Setup Dates
-    const year = navDate.getFullYear();
-    const month = navDate.getMonth();
+    year = navDate.getFullYear();
+    month = navDate.getMonth();
     
     // Display Month Name and Year
     const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(navDate);
@@ -660,7 +684,7 @@ async function renderCalendar() {
         const fullDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         
         // Filter reports that match this day
-        const dayData = reports.filter(r => r.created_at.startsWith(fullDateStr));
+        const dayData = reports.filter(r => String(r.created_at).startsWith(fullDateStr));
         
         // Determine Mood color class
         let moodClass = "";
@@ -688,6 +712,7 @@ document.getElementById('nextMonth').addEventListener('click', () => {
     navDate.setMonth(navDate.getMonth() + 1);
     renderCalendar();
 });
+
 
 // Helper: Fetch from Backend
 async function fetchReportsForMonth(monthStr) {
@@ -817,21 +842,90 @@ let recIndex = 0;
 let allRecommendations = [];
 
 window.generateNewAIRecommendation = async function() {
-    // Call the backend as we did before
-    const response = await fetch('/generate_ai_recommendation', { 
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-        emotion: "Happy", 
-        wave: "Alpha" 
-    })
-});
-    const result = await response.json();
-    
-    if (result.success) {
-        await window.loadRecommendations(); // Reload list from DB
-    } else {
-        alert(result.error || "Generation failed");
+    const btn = document.getElementById('gen-rec-btn');
+    const quoteEl = document.getElementById('ai-quote');
+    const imageEl = document.getElementById('ai-image');
+    const audioEl = document.getElementById('ai-music');
+    const taskContainer = document.getElementById('ai-tasks');
+    const emotionTag = document.getElementById('emotion-tag');
+
+    // 1. STOP PERSISTENT BACKGROUND MUSIC
+    // We call the API from your music_player.js to handle pausing 
+    // and saving the 'paused_by_other' state to localStorage.
+    if (window.musicPlayer) {
+        console.log("Pausing background music via persistent API...");
+        window.musicPlayer.pauseForOtherMusic();
+    }
+
+    // 2. Visual Loading Feedback
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing EEG...';
+    }
+
+    try {
+        const response = await fetch('/generate_ai_recommendation', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update the UI Sub-sections
+            quoteEl.innerText = `"${result.quote}"`;
+
+            imageEl.src = result.image_url;
+            imageEl.style.display = 'block';
+            
+            if(emotionTag) {
+                emotionTag.innerText = `STATE: ${result.emotion.toUpperCase()}`;
+            }
+
+            // 3. PLAY WELLNESS TRACK
+            audioEl.src = result.music_url;
+            audioEl.load(); 
+            audioEl.play().catch(e => console.warn("Playback delayed until interaction:", e));
+
+            // 4. AUTO-RESUME BACKGROUND WHEN WELLNESS TRACK ENDS
+            audioEl.onended = function() {
+                if (window.musicPlayer) {
+                    console.log("Wellness track finished. Resuming background...");
+                    window.musicPlayer.resumeAfterOtherMusic();
+                }
+            };
+
+            // Update Tasks
+            taskContainer.innerHTML = result.tasks.map((task, index) => `
+                <div class="task-item" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
+                    <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">STEP 0${index + 1}</div>
+                    <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>
+                </div>
+            `).join('');
+
+            if (typeof window.loadRecommendations === "function") {
+                await window.loadRecommendations(); 
+            }
+
+        } else {
+            alert(result.error || "Generation failed");
+        }
+    } catch (error) {
+        console.error("Wellness Hub Error:", error);
+        alert("Connection error. Check Flask console.");
+    } finally {
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Recommendations';
+        }
+    }
+};
+
+// 4. OPTIONAL: Auto-resume background music when wellness song ends
+document.getElementById('ai-music').onended = function() {
+    const bgMusic = document.getElementById('bg-music-player');
+    if (bgMusic) {
+        bgMusic.play();
     }
 };
 
@@ -860,21 +954,46 @@ window.moveCarousel = function(direction) {
 };
 
 function updateCarouselUI() {
-    const container = document.getElementById('ai-rec-container');
+    // 1. Get references to the specific grid elements
+    const quoteEl = document.getElementById('ai-quote');
+    const imageEl = document.getElementById('ai-image');
+    const audioEl = document.getElementById('ai-music');
+    const taskEl = document.getElementById('ai-tasks');
+    const emotionTag = document.getElementById('emotion-tag');
+
+    // 2. Safety Check: If the section is hidden/missing, don't crash
+    if (!quoteEl || !taskEl) return;
+
+    // 3. Get the current recommendation from your global array
     const rec = allRecommendations[recIndex];
+    if (!rec) return;
+
+    // 4. Update the Text and Media
+    quoteEl.innerText = `"${rec.quote || rec.content}"`;
     
-    container.innerHTML = `
-        <div class="ai-card glass slide-in" style="min-width: 100%; box-sizing: border-box;">
-            <img src="${rec.image_url || 'https://via.placeholder.com/400x200'}" class="ai-card-image">
-            <div class="ai-card-body">
-                <span class="emotion-tag">${rec.emotion}</span>
-                <p style="margin-top:15px; color:#333;">${rec.content}</p>
-                <div style="text-align:right; font-size:0.8em; color:#888; margin-top:10px;">
-                    Entry ${recIndex + 1} of ${allRecommendations.length}
-                </div>
-            </div>
+    if (rec.image_url) {
+        imageEl.src = rec.image_url;
+        imageEl.style.display = 'block';
+    }
+
+    if (emotionTag) {
+        emotionTag.innerText = `STATE: ${rec.emotion.toUpperCase()}`;
+    }
+
+    // 5. Update Audio
+    if (rec.music_url) {
+        audioEl.src = rec.music_url;
+        audioEl.load();
+    }
+
+    // 6. Update Tasks (The Grid inside the Card)
+    // We target 'ai-tasks' which exists in your HTML
+    taskEl.innerHTML = (rec.tasks || []).map((task, index) => `
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
+            <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">TASK 0${index + 1}</div>
+            <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>
         </div>
-    `;
+    `).join('');
 }
 
 

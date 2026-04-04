@@ -257,19 +257,50 @@
             </div>
         </section>
 
-<section id="recommendations" class="content-section" style="display:none;">
-    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h1>AI Wellness Hub</h1>
-        <button class="action-btn" onclick="window.generateNewAIRecommendation()">Generate New</button>
+<section id="recommendations" class="content-section" style="display:none; padding: 25px; background: rgba(10, 10, 20, 0.4); border-radius: 20px;">
+    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <div>
+            <h1 style="color: #9d4edd; margin: 0; font-size: 2rem;">AI Wellness Hub</h1>
+            <p style="color: #c8b6ff; opacity: 0.8; margin-top: 5px;">Personalized neuro-feedback recommendations</p>
+        </div>
+        <button class="action-btn" id="gen-rec-btn" onclick="generateNewAIRecommendation()" style="background: linear-gradient(135deg, #7b2ff2, #5a189a); border: none; padding: 12px 25px; border-radius: 50px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(123, 47, 242, 0.3); transition: 0.3s;">
+            <i class="fas fa-sync-alt"></i> Refresh Recommendations
+        </button>
     </div>
 
-    <div class="carousel-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center; gap: 20px;">
-        <button class="nav-arrow" onclick="moveCarousel(-1)"><i class="fas fa-chevron-left"></i></button>
-
-        <div id="ai-rec-container" class="recommendations-carousel" style="display: flex; overflow: hidden; width: 100%; max-width: 400px; scroll-behavior: smooth;">
+    <div class="hub-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 25px;">
+        
+        <div class="hub-card" style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.2); overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 20px;">
+                <h3 style="color: #c8b6ff; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px;">Mindset Quote</h3>
+                <p id="ai-quote" style="font-size: 1.2rem; color: #e0aaff; font-style: italic; margin-top: 10px; line-height: 1.6;">"Your journey to wellness starts with a single pulse."</p>
             </div>
+            <div style="flex-grow: 1; position: relative; min-height: 200px;">
+                <img id="ai-image" src="" alt="Song Thumbnail" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                <div style="position: absolute; bottom: 0; width: 100%; padding: 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8));">
+                    <span id="emotion-tag" style="background: #9d4edd; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">NEURAL STATE</span>
+                </div>
+            </div>
+        </div>
 
-        <button class="nav-arrow" onclick="moveCarousel(1)"><i class="fas fa-chevron-right"></i></button>
+        <div class="hub-card" style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.2); padding: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div style="width: 80px; height: 80px; background: rgba(123, 47, 242, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                <i class="fas fa-music" style="color: #9d4edd; font-size: 2rem;"></i>
+            </div>
+            <h3 style="color: #e0aaff; margin-bottom: 10px;">Therapeutic Audio</h3>
+            <p style="color: #c8b6ff; font-size: 0.85rem; margin-bottom: 25px; opacity: 0.8;">Synced with your brainwave frequency</p>
+            <audio id="ai-music" controls style="width: 100%; filter: invert(20%) sepia(80%) saturate(500%) hue-rotate(240deg);">
+                <source src="" type="audio/mpeg">
+            </audio>
+        </div>
+
+        <div class="hub-card" style="grid-column: span 2; background: rgba(157, 78, 221, 0.08); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.3); padding: 25px;">
+            <h3 style="color: #e0aaff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-clipboard-list"></i> Your Action Plan
+            </h3>
+            <div id="ai-tasks" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                </div>
+        </div>
     </div>
 </section>
 
@@ -300,7 +331,7 @@
                 <!-- PACMAN -->
                 <div class="game-card glass-card">
                     <div class="game-thumbnail">
-                        <img src="{{ url_for('static', filename='../games/PythonPacman-main/pacman_thumbnail.jpeg') }}" alt="Pacman">
+                        <img src="{{ "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775237268/pacmanlvl1_dgphke.jpg" }}" alt="Pacman"> 
                         <div class="game-overlay">
                             <button class="play-btn" onclick="launchGame('pacman')">
                                 <i class="fas fa-play"></i> Play
@@ -316,13 +347,11 @@
                 <!-- FLAPPY BIRD -->
                 <div class="game-card glass-card">
                     <div class="game-thumbnail">
-                        <img src="{{ url_for('static', filename='../games/flappy-bird-python-master/flappy_thumbnail.jpeg') }}" alt="Flappy Bird">
-                        <div class="game-overlay">
+                                <img src="{{ "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775237258/flappy_thumbnail_oqr4md.webp" }}" alt="Flappy Bird">
                             <button class="play-btn" onclick="launchGame('flappy')">
                                 <i class="fas fa-play"></i> Play
                             </button>
                         </div>
-                    </div>
                     <div class="game-info">
                         <h3>Flappy Bird</h3>
                         <p>Flap through the pipes!</p>
@@ -332,7 +361,7 @@
                 <!-- SPACE INVADERS -->
                 <div class="game-card glass-card">
                     <div class="game-thumbnail">
-                        <img src="{{ url_for('static', filename='../games/space/Python-Space-Invaders-Game-with-Pygame-main/preview.jpg') }}" alt="Space Invaders">
+                        <img src="{{"https://res.cloudinary.com/dkjp9svlj/image/upload/v1775258548/Screenshot_2026-04-04_045149_frpd4c.png"}}" alt="Space Invaders">
                         <div class="game-overlay">
                             <button class="play-btn" onclick="launchGame('space_invaders')">
                                 <i class="fas fa-play"></i> Play

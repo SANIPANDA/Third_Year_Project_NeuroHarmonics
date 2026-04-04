@@ -1,29 +1,58 @@
 import pandas as pd
 import numpy as np
 import os
-
-# This script generates the 'processed_eeg_features.csv' file 
-# that your train_model.py is looking for.
+from processor import EEGProcessor
 
 def generate_processed_data():
-    print("Generating feature dataset...")
+    print("🚀 Starting Feature Extraction Pipeline...")
     
-    # We are creating 200 samples of 'processed' data
-    # In a real scenario, this would come from your .edf/.csv raw files
-    data = {
-        'Delta': np.random.uniform(0.5, 20.0, 200),
-        'Theta': np.random.uniform(0.5, 15.0, 200),
-        'Alpha': np.random.uniform(1.0, 30.0, 200),
-        'Beta': np.random.uniform(1.0, 25.0, 200),
-        'Gamma': np.random.uniform(0.1, 10.0, 200),
-        'Emotion': np.random.choice(['Angry', 'Sad', 'Tired', 'Happy'], 200)
+    # Initialize your actual processor logic
+    processor = EEGProcessor()
+    
+    # Define which files correspond to which emotions
+    # This matches the filenames from your generators
+    categories = {
+        'Happy': 'data/happy',
+        'Sad': 'data/sad',
+        'Tired': 'data/tired',
+        'Angry': 'data/angry'
     }
 
-    df = pd.DataFrame(data)
+    all_features = []
+
+    for emotion, prefix in categories.items():
+        print(f"Processing {emotion} files...")
+        
+        # Loop through the 10 files we generated for each emotion
+        for i in range(1, 11):
+            file_path = f"{prefix}{i}.csv"
+            
+            if os.path.exists(file_path):
+                # Use the REAL processing logic (Filtering -> ICA -> PSD)
+                try:
+                    features = processor.process_signal(file_path)
+                    
+                    if features is not None:
+                        # Add each windowed segment as a row in our dataset
+                        for row in features:
+                            # Combine features with the emotion label
+                            feature_row = list(row) + [emotion]
+                            all_features.append(feature_row)
+                except Exception as e:
+                    print(f"⚠️ Error processing {file_path}: {e}")
+            else:
+                print(f"❓ Missing file: {file_path}")
+
+    # Create the DataFrame with correct column names
+    columns = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma', 'Emotion']
+    df = pd.DataFrame(all_features, columns=columns)
     
-    # This creates the file your error was complaining about!
-    df.to_csv('processed_eeg_features.csv', index=False)
-    print("Done! 'processed_eeg_features.csv' created.")
+    if not df.empty:
+        # Save the master feature set
+        df.to_csv('processed_eeg_features.csv', index=False)
+        print(f"✅ Success! Generated 'processed_eeg_features.csv' with {len(df)} samples.")
+    else:
+        print("❌ Error: No features were extracted. Check your 'data/' folder.")
 
 if __name__ == "__main__":
     generate_processed_data()

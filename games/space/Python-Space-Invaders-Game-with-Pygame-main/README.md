@@ -6,7 +6,7 @@ For an in-depth tutorial on creating your own Space Invaders game using pygame, 
 
 # Video Tutorial
 <p align="center">
-  <img src="preview.jpg" alt="" width="960">
+  <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1775258548/Screenshot_2026-04-04_045149_frpd4c.png" alt="" width="960">
 </p>
 <p align="center">
 🎥 <a href="https://youtu.be/PFMoo_dvhyw">Video Tutorial on YouTube</a>

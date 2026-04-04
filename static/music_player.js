@@ -1,215 +1,80 @@
-// Global persistent-like background player
-// Plays one designated file in loop, pauses when other audio plays,
-// saves position/state to localStorage and restores on next page load.
+window.generateNewAIRecommendation = async function() {
+    const btn = document.getElementById('gen-rec-btn');
+    const quoteEl = document.getElementById('ai-quote');
+    const imageEl = document.getElementById('ai-image');
+    const audioEl = document.getElementById('ai-music');
+    const taskContainer = document.getElementById('ai-tasks');
+    const emotionTag = document.getElementById('emotion-tag');
 
-let musicPlayer = null;
-let volume = 0.5;
-const BG_SRC = 'https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461684/background_jldumw.mp3';
-const LS_KEY_TIME = 'nh_bg_time';
-const LS_KEY_PLAY = 'nh_bg_playing';
-const LS_KEY_PAUSED_BY_OTHER = 'nh_bg_paused_by_other';
-const LS_KEY_VOLUME = 'nh_bg_volume';
-
-// Restore volume from localStorage
-try {
-    const savedVol = localStorage.getItem(LS_KEY_VOLUME);
-    if (savedVol !== null) {
-        volume = Math.max(0, Math.min(1, parseFloat(savedVol)));
+    // 1. STOP PERSISTENT BACKGROUND MUSIC
+    if (window.musicPlayer) {
+        window.musicPlayer.pauseForOtherMusic();
     }
-} catch (e) {}
 
-function createMusicPlayer() {
-    if (musicPlayer) return musicPlayer;
-    musicPlayer = new Audio(BG_SRC);
-    musicPlayer.loop = true;
-    musicPlayer.volume = volume;
-    musicPlayer.preload = 'auto';
-    syncVolumeSlider();
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing EEG...';
+    }
 
-    // restore position if available
     try {
-        const t = parseFloat(localStorage.getItem(LS_KEY_TIME) || '0');
-        if (!isNaN(t) && t > 0) {
-            musicPlayer.currentTime = Math.max(0, t - 0.5); // back up a little for continuity
-        }
-    } catch (e) {}
+        const response = await fetch('/generate_ai_recommendation', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
 
-    // persist time periodically
-    musicPlayer.addEventListener('timeupdate', () => {
-        try { localStorage.setItem(LS_KEY_TIME, String(musicPlayer.currentTime)); } catch (e) {}
-    });
-
-    // save play/pause state
-    musicPlayer.addEventListener('play', () => {
-        try { localStorage.setItem(LS_KEY_PLAY, '1'); } catch (e) {}
-        try { updateToggleButton(); } catch (e) {}
-    });
-    musicPlayer.addEventListener('pause', () => {
-        try { localStorage.setItem(LS_KEY_PLAY, '0'); } catch (e) {}
-        try { updateToggleButton(); } catch (e) {}
-    });
-
-    // Keep background playing when other audio plays (don't pause it)
-    // Just keep it at background level; it will naturally be quieter if other audio is playing
-
-    // when other audio pauses or ends, resume background if it was paused by other audio
-    function _maybeResumeOnOtherStop(ev) {
-        try {
-            const tgt = ev.target;
-            if (!(tgt instanceof HTMLAudioElement)) return;
-            if (tgt === musicPlayer) return;
-            const pausedByOther = localStorage.getItem(LS_KEY_PAUSED_BY_OTHER) === '1';
-            if (pausedByOther) {
-                // clear flag and attempt resume
-                localStorage.removeItem(LS_KEY_PAUSED_BY_OTHER);
-                // attempt play; may be blocked by autoplay policy until user interaction
-                musicPlayer.play().catch(() => {});
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update UI Sub-sections
+            quoteEl.innerText = `"${result.quote}"`;
+            imageEl.src = result.image_url;
+            imageEl.style.display = 'block';
+            
+            if(emotionTag) {
+                emotionTag.innerText = `STATE: ${result.emotion.toUpperCase()}`;
             }
-        } catch (e) {}
-    }
-    document.addEventListener('pause', _maybeResumeOnOtherStop, true);
-    document.addEventListener('ended', _maybeResumeOnOtherStop, true);
 
-    // before unload, persist current time and playing state
-    window.addEventListener('beforeunload', () => {
-        try { localStorage.setItem(LS_KEY_TIME, String(musicPlayer.currentTime)); } catch (e) {}
-        try { localStorage.setItem(LS_KEY_PLAY, musicPlayer.paused ? '0' : '1'); } catch (e) {}
-    });
+            // --- FIXED AUDIO LOGIC START ---
+            // 1. Set the source
+            audioEl.src = result.music_url;
+            
+            // 2. Define what happens when it's ready
+            const playWhenReady = () => {
+                audioEl.play().catch(e => console.warn("Playback blocked:", e));
+                // Remove the listener so it doesn't fire again randomly
+                audioEl.removeEventListener('canplaythrough', playWhenReady);
+            };
 
-    return musicPlayer;
-}
+            // 3. Add the listener and THEN load
+            audioEl.addEventListener('canplaythrough', playWhenReady);
+            audioEl.load(); 
+            // --- FIXED AUDIO LOGIC END ---
 
-function startBackgroundIfNeeded() {
-    const player = createMusicPlayer();
-    const shouldPlay = localStorage.getItem(LS_KEY_PLAY) === '1' || localStorage.getItem(LS_KEY_PLAY) === null;
-    // If user preference unknown, try to play; modern browsers may block autplay.
-    if (shouldPlay) {
-        player.play().catch(() => {});
-    }
-}
+            // Auto-resume background when wellness track ends
+            audioEl.onended = function() {
+                if (window.musicPlayer) {
+                    window.musicPlayer.resumeAfterOtherMusic();
+                }
+            };
 
-function stopBackground() {
-    if (!musicPlayer) return;
-    musicPlayer.pause();
-}
+            // Update Tasks
+            taskContainer.innerHTML = result.tasks.map((task, index) => `
+                <div class="task-item" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
+                    <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">STEP 0${index + 1}</div>
+                    <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>
+                </div>
+            `).join('');
 
-// Restore on DOM ready
-window.addEventListener('DOMContentLoaded', () => {
-    // Ensure the background file is used
-    startBackgroundIfNeeded();
-});
-
-// Expose API
-window.musicPlayer = {
-    play() { createMusicPlayer(); return musicPlayer.play().catch(() => {}); },
-    pause() { stopBackground(); },
-    isPlaying() { return musicPlayer && !musicPlayer.paused; },
-    toggle() {
-        try {
-            createMusicPlayer();
-            if (musicPlayer.paused) {
-                musicPlayer.play().catch(() => {});
-            } else {
-                musicPlayer.pause();
+            if (typeof window.loadRecommendations === "function") {
+                await window.loadRecommendations(); 
             }
-            updateToggleButton();
-        } catch (e) {}
-    },
-    // Pause background when other audio plays, mark as paused-by-other
-    pauseForOtherMusic() { 
-        if (musicPlayer && !musicPlayer.paused) {
-            musicPlayer.pause();
-            try { localStorage.setItem(LS_KEY_PAUSED_BY_OTHER, '1'); } catch (e) {}
-            updateToggleButton();
         }
-    },
-    // Resume after other music ends
-    resumeAfterOtherMusic() { 
-        if (musicPlayer && musicPlayer.paused) {
-            try { localStorage.removeItem(LS_KEY_PAUSED_BY_OTHER); } catch (e) {}
-            musicPlayer.play().catch(() => {});
-            updateToggleButton();
+    } catch (error) {
+        console.error("Wellness Hub Error:", error);
+    } finally {
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Recommendations';
         }
     }
 };
-
-// Update header button state if present
-function updateToggleButton() {
-    try {
-        const btn = document.getElementById('nh-music-toggle');
-        if (!btn) return;
-        const playing = musicPlayer && !musicPlayer.paused;
-        btn.textContent = playing ? '⏸️' : '🔊';
-    } catch (e) {}
-}
-
-// Sync volume slider with player
-function syncVolumeSlider() {
-    try {
-        const slider = document.getElementById('nh-volume-slider');
-        if (slider && musicPlayer) {
-            slider.value = Math.round(musicPlayer.volume * 100);
-        }
-    } catch (e) {}
-}
-
-// Set volume on music player
-function setVolume(val) {
-    try {
-        volume = Math.max(0, Math.min(1, val / 100));
-        if (musicPlayer) {
-            musicPlayer.volume = volume;
-        }
-        localStorage.setItem(LS_KEY_VOLUME, String(volume));
-    } catch (e) {}
-}
-
-// Attempt to resume if page becomes visible and background was paused by other audio
-document.addEventListener('visibilitychange', () => {
-    try {
-        if (document.visibilityState === 'visible') {
-            const pausedByOther = localStorage.getItem(LS_KEY_PAUSED_BY_OTHER) === '1';
-            
-            // ADDED THIS CHECK:
-            const recAudio = document.getElementById('recommendationAudio');
-            const isRecPlaying = recAudio && !recAudio.paused;
-
-            // Only resume if it was paused by other AND nothing is currently playing now
-            if (pausedByOther && musicPlayer && musicPlayer.paused && !isRecPlaying) {
-                musicPlayer.play().catch(() => {});
-                localStorage.removeItem(LS_KEY_PAUSED_BY_OTHER);
-            }
-            updateToggleButton();
-        }
-    } catch (e) {}
-});
-
-// Wire up header controls and ensure background music keeps playing
-window.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('nh-music-toggle');
-    const volSlider = document.getElementById('nh-volume-slider');
-    
-    if (btn) {
-        btn.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            window.musicPlayer.toggle();
-        });
-    }
-    
-    if (volSlider) {
-        volSlider.addEventListener('input', (ev) => {
-            setVolume(parseInt(ev.target.value));
-        });
-    }
-    
-    // reflect initial state
-    setTimeout(updateToggleButton, 250);
-    setTimeout(syncVolumeSlider, 250);
-    
-    // Ensure background music plays continuously
-    setTimeout(() => {
-        if (musicPlayer && musicPlayer.paused) {
-            musicPlayer.play().catch(() => {});
-        }
-    }, 500);
-});
