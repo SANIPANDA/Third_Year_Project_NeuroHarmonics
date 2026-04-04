@@ -1,80 +1,131 @@
-window.generateNewAIRecommendation = async function() {
-    const btn = document.getElementById('gen-rec-btn');
-    const quoteEl = document.getElementById('ai-quote');
-    const imageEl = document.getElementById('ai-image');
-    const audioEl = document.getElementById('ai-music');
-    const taskContainer = document.getElementById('ai-tasks');
-    const emotionTag = document.getElementById('emotion-tag');
-
-    // 1. STOP PERSISTENT BACKGROUND MUSIC
-    if (window.musicPlayer) {
-        window.musicPlayer.pauseForOtherMusic();
+class MusicPlayer {
+    constructor() {
+        this.audio = new Audio();
+        this.isPlaying = false;
+        this.currentTrack = null;
+        this.pauseRequested = false;
+        this.init();
     }
 
-    if(btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing EEG...';
-    }
+    init() {
+        // Auto-play ambient track on load (fallback to click if needed)
+        this.loadTrack('/static/music/ambient-loop.mp3'); // Replace with your track path
+        this.play();
 
-    try {
-        const response = await fetch('/generate_ai_recommendation', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+        // Resume on user interaction (iOS/Safari requirement)
+        document.addEventListener('click', () => this.resumeIfNeeded(), { once: true });
+        document.addEventListener('touchstart', () => this.resumeIfNeeded(), { once: true });
+
+        // Handle visibility change (mobile tab switching)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && this.isPlaying) {
+                this.audio.play().catch(e => console.log('Resume failed:', e));
+            }
         });
 
-        const result = await response.json();
-        
-        if (result.success) {
-            // Update UI Sub-sections
-            quoteEl.innerText = `"${result.quote}"`;
-            imageEl.src = result.image_url;
-            imageEl.style.display = 'block';
-            
-            if(emotionTag) {
-                emotionTag.innerText = `STATE: ${result.emotion.toUpperCase()}`;
+        // Track ended - loop
+        this.audio.addEventListener('ended', () => {
+            if (this.currentTrack && !this.pauseRequested) {
+                this.audio.currentTime = 0;
+                this.audio.play();
             }
+        });
 
-            // --- FIXED AUDIO LOGIC START ---
-            // 1. Set the source
-            audioEl.src = result.music_url;
-            
-            // 2. Define what happens when it's ready
-            const playWhenReady = () => {
-                audioEl.play().catch(e => console.warn("Playback blocked:", e));
-                // Remove the listener so it doesn't fire again randomly
-                audioEl.removeEventListener('canplaythrough', playWhenReady);
-            };
+        // Pause/resume coordination
+        this.audio.addEventListener('play', () => {
+            this.isPlaying = true;
+            this.pauseRequested = false;
+        });
 
-            // 3. Add the listener and THEN load
-            audioEl.addEventListener('canplaythrough', playWhenReady);
-            audioEl.load(); 
-            // --- FIXED AUDIO LOGIC END ---
+        this.audio.addEventListener('pause', () => {
+            this.isPlaying = false;
+        });
+    }
 
-            // Auto-resume background when wellness track ends
-            audioEl.onended = function() {
-                if (window.musicPlayer) {
-                    window.musicPlayer.resumeAfterOtherMusic();
-                }
-            };
+    // PUBLIC API for other scripts
+    pauseForOtherMusic() {
+        console.log('BG music paused for other track');
+        this.pauseRequested = true;
+        this.audio.pause();
+    }
 
-            // Update Tasks
-            taskContainer.innerHTML = result.tasks.map((task, index) => `
-                <div class="task-item" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
-                    <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">STEP 0${index + 1}</div>
-                    <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>
-                </div>
-            `).join('');
-
-            if (typeof window.loadRecommendations === "function") {
-                await window.loadRecommendations(); 
-            }
+    resumeAfterOtherMusic() {
+        console.log('BG music resuming after other track');
+        if (!this.pauseRequested) return;
+        this.pauseRequested = false;
+        if (this.currentTrack) {
+            this.audio.play().catch(e => console.log('Resume failed:', e));
         }
-    } catch (error) {
-        console.error("Wellness Hub Error:", error);
-    } finally {
-        if(btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Recommendations';
+    }
+
+    resumeIfNeeded() {
+        if (this.currentTrack && !this.isPlaying) {
+            this.audio.play().catch(e => console.log('Autoplay failed:', e));
+        }
+    }
+
+    loadTrack(src) {
+        this.currentTrack = src;
+        this.audio.src = src;
+        this.audio.loop = true;
+        this.audio.volume = 0.3; // Low volume ambient
+    }
+
+    play() {
+        this.audio.play().then(() => {
+            this.isPlaying = true;
+        }).catch(e => {
+            console.log('Play blocked:', e);
+        });
+    }
+
+    pause() {
+        this.audio.pause();
+        this.isPlaying = false;
+    }
+
+    setVolume(vol) {
+        this.audio.volume = Math.max(0, Math.min(1, vol));
+    }
+}
+
+// Global singleton
+window.musicPlayer = new MusicPlayer();
+
+// Expose controls for UI buttons
+window.toggleMusicPanel = function() {
+    if (!window.musicPlayer) return;
+    
+    const panel = document.getElementById('music-panel');
+    if (panel) panel.classList.toggle('open');
+    
+    const btn = document.getElementById('playPauseBtn');
+    if (btn) {
+        if (window.musicPlayer.isPlaying) {
+            window.musicPlayer.pause();
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+        } else {
+            window.musicPlayer.play();
+            btn.innerHTML = '<i class="fas fa-pause"></i>';
         }
     }
 };
+
+// Handle page visibility for mobile
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && window.musicPlayer && window.musicPlayer.currentTrack) {
+        window.musicPlayer.audio.play().catch(() => {});
+    }
+});
+
+// Auto-resume on any user gesture
+['click', 'touchstart', 'keydown'].forEach(event => {
+    document.addEventListener(event, () => {
+        if (window.musicPlayer && window.musicPlayer.currentTrack && !window.musicPlayer.isPlaying) {
+            window.musicPlayer.play();
+        }
+    }, { once: true, passive: true });
+});
+
+console.log('🎵 NeuroHarmonics MusicPlayer initialized - ambient track looping continuously');
+

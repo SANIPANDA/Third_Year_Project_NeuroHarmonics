@@ -845,19 +845,18 @@ window.generateNewAIRecommendation = async function() {
     const btn = document.getElementById('gen-rec-btn');
     const quoteEl = document.getElementById('ai-quote');
     const imageEl = document.getElementById('ai-image');
-    const audioEl = document.getElementById('ai-music');
+    
+    const audio1 = document.getElementById('ai-music-1');
+    const audio2 = document.getElementById('ai-music-2');
+    
     const taskContainer = document.getElementById('ai-tasks');
     const emotionTag = document.getElementById('emotion-tag');
 
-    // 1. STOP PERSISTENT BACKGROUND MUSIC
-    // We call the API from your music_player.js to handle pausing 
-    // and saving the 'paused_by_other' state to localStorage.
     if (window.musicPlayer) {
-        console.log("Pausing background music via persistent API...");
+        console.log("Pausing background music...");
         window.musicPlayer.pauseForOtherMusic();
     }
 
-    // 2. Visual Loading Feedback
     if(btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing EEG...';
@@ -872,36 +871,55 @@ window.generateNewAIRecommendation = async function() {
         const result = await response.json();
         
         if (result.success) {
-            // Update the UI Sub-sections
-            quoteEl.innerText = `"${result.quote}"`;
+            // 1. Update Quote
+            if(quoteEl) quoteEl.innerText = `"${result.quote}"`;
 
-            imageEl.src = result.image_url;
-            imageEl.style.display = 'block';
+            // 2. Updated Thumbnail Logic
+            if (result.track1 && result.track1.thumb && imageEl) {
+                imageEl.src = result.track1.thumb;
+                imageEl.style.display = 'block';
+                imageEl.style.opacity = '1'; // Ensure it fades in/shows up
+            }
             
             if(emotionTag) {
                 emotionTag.innerText = `STATE: ${result.emotion.toUpperCase()}`;
             }
 
-            // 3. PLAY WELLNESS TRACK
-            audioEl.src = result.music_url;
-            audioEl.load(); 
-            audioEl.play().catch(e => console.warn("Playback delayed until interaction:", e));
+            // 3. Load both tracks from the result object
+            if (audio1 && result.track1) {
+                audio1.src = result.track1.music;
+                audio1.load(); 
+            }
 
-            // 4. AUTO-RESUME BACKGROUND WHEN WELLNESS TRACK ENDS
-            audioEl.onended = function() {
+            if (audio2 && result.track2) {
+                audio2.src = result.track2.music;
+                audio2.load();
+            }
+
+            // 4. Prevent Overlap & Resume Background
+            const resumeBG = () => {
                 if (window.musicPlayer) {
-                    console.log("Wellness track finished. Resuming background...");
                     window.musicPlayer.resumeAfterOtherMusic();
                 }
             };
 
-            // Update Tasks
-            taskContainer.innerHTML = result.tasks.map((task, index) => `
-                <div class="task-item" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
-                    <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">STEP 0${index + 1}</div>
-                    <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>
-                </div>
-            `).join('');
+            if (audio1 && audio2) {
+                audio1.onplay = () => audio2.pause();
+                audio2.onplay = () => audio1.pause();
+                
+                audio1.onended = resumeBG;
+                audio2.onended = resumeBG;
+            }
+
+            // 5. Update Task List
+            if(taskContainer) {
+                taskContainer.innerHTML = result.ai_tasks.map((task, index) => `
+                    <div class="task-item" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
+                        <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">STEP 0${index + 1}</div>
+                        <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>
+                    </div>
+                `).join('');
+            }
 
             if (typeof window.loadRecommendations === "function") {
                 await window.loadRecommendations(); 
@@ -918,14 +936,6 @@ window.generateNewAIRecommendation = async function() {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Recommendations';
         }
-    }
-};
-
-// 4. OPTIONAL: Auto-resume background music when wellness song ends
-document.getElementById('ai-music').onended = function() {
-    const bgMusic = document.getElementById('bg-music-player');
-    if (bgMusic) {
-        bgMusic.play();
     }
 };
 
@@ -957,7 +967,8 @@ function updateCarouselUI() {
     // 1. Get references to the specific grid elements
     const quoteEl = document.getElementById('ai-quote');
     const imageEl = document.getElementById('ai-image');
-    const audioEl = document.getElementById('ai-music');
+    const audio1 = document.getElementById('ai-music-1');
+    const audio2 = document.getElementById('ai-music-2');
     const taskEl = document.getElementById('ai-tasks');
     const emotionTag = document.getElementById('emotion-tag');
 
@@ -982,8 +993,13 @@ function updateCarouselUI() {
 
     // 5. Update Audio
     if (rec.music_url) {
-        audioEl.src = rec.music_url;
-        audioEl.load();
+        audio1.src = rec.music_url;
+        audio1.load();
+    }
+
+    if (rec.music_url_2 && audio2) {
+        audio2.src = rec.music_url_2;
+        audio2.load();
     }
 
     // 6. Update Tasks (The Grid inside the Card)

@@ -190,6 +190,20 @@
     cursor: pointer;
     position: relative;
 }
+
+#facePhoto,\n#camera {\n    cursor: default !important;\n    pointer-events: none !important;\n    max-width: 200px !important;\n    max-height: 150px !important;\n    margin: 10px auto !important;\n    display: block !important;\n    box-shadow: 0 4px 20px rgba(168,85,247,0.4) !important;\n    border-radius: 12px !important;\n    border: 3px solid #a855f7 !important;\n}
+
+#facePhoto:hover {
+    cursor: default !important;
+}
+
+#facePhoto {
+    max-width: 200px !important;
+    max-height: 150px !important;
+    margin: 10px auto !important;
+    display: block !important;
+    box-shadow: 0 4px 20px rgba(168,85,247,0.4) !important;
+}
 .drop-area.drag-over {
     border-color: #fff;
     background: rgba(157,78,221,0.18);

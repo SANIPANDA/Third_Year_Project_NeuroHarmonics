@@ -153,8 +153,8 @@
                         </div>
                         <input type="file" id="faceFile" accept="image/*" style="display:none;" />
                         <button class="action-btn" onclick="startFaceDetection()">Use Webcam</button>
-                        <video id="camera" width="320" height="240" autoplay style="display:none; border-radius:8px;"></video>
-                        <canvas id="facePhoto" width="320" height="240" style="display:none; border-radius:8px; border:2px solid #a855f7;"></canvas>
+<video id="camera" width="200" height="150" autoplay style="display:none; max-width:200px; max-height:150px; border-radius:12px; border:3px solid #a855f7; box-shadow:0 4px 20px rgba(168,85,247,0.3); margin:10px auto; display:block;"></video>
+                        <canvas id="facePhoto" width="200" height="150" style="display:none; max-width:200px; max-height:150px; border-radius:12px; border:3px solid #a855f7; box-shadow:0 4px 20px rgba(168,85,247,0.3); margin:10px auto; display:block;"></canvas>
                         <button class="action-btn" id="captureBtn" style="display:none; margin-top:10px;" onclick="capturePhoto()">Capture Photo</button>
                     </div>
                     <button class="action-btn" style="margin-top:14px;" onclick="analyzeFaceEmotion()">Analyze Emotion</button>
@@ -272,30 +272,42 @@
     </div>
 
     <div class="hub-grid" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 25px;">
-        
-        <div class="hub-card" style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.2); overflow: hidden; display: flex; flex-direction: column;">
-            <div style="padding: 20px;">
-                <h3 style="color: #c8b6ff; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px;">Mindset Quote</h3>
-                <p id="ai-quote" style="font-size: 1.2rem; color: #e0aaff; font-style: italic; margin-top: 10px; line-height: 1.6;">"Your journey to wellness starts with a single pulse."</p>
-            </div>
-            <div style="flex-grow: 1; position: relative; min-height: 200px;">
-                <img id="ai-image" src="" alt="Song Thumbnail" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                <div style="position: absolute; bottom: 0; width: 100%; padding: 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8));">
-                    <span id="emotion-tag" style="background: #9d4edd; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">NEURAL STATE</span>
-                </div>
+    
+    <div class="hub-card" style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.2); overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 20px;">
+            <h3 style="color: #c8b6ff; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px;">Mindset Quote</h3>
+            <p id="ai-quote" style="font-size: 1.2rem; color: #e0aaff; font-style: italic; margin-top: 10px; line-height: 1.6;">"Your journey to wellness starts with a single pulse."</p>
+        </div>
+        <div style="flex-grow: 1; position: relative; min-height: 200px;">
+            <img id="ai-image" src="" alt="Song Thumbnail" 
+                 style="width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.8; transition: 0.5s;">
+            
+            <div style="position: absolute; bottom: 0; width: 100%; padding: 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); pointer-events: none;">
+                <span id="emotion-tag" style="background: #9d4edd; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">NEURAL STATE</span>
             </div>
         </div>
-
-        <div class="hub-card" style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.2); padding: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-            <div style="width: 80px; height: 80px; background: rgba(123, 47, 242, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-                <i class="fas fa-music" style="color: #9d4edd; font-size: 2rem;"></i>
-            </div>
-            <h3 style="color: #e0aaff; margin-bottom: 10px;">Therapeutic Audio</h3>
-            <p style="color: #c8b6ff; font-size: 0.85rem; margin-bottom: 25px; opacity: 0.8;">Synced with your brainwave frequency</p>
-            <audio id="ai-music" controls style="width: 100%; filter: invert(20%) sepia(80%) saturate(500%) hue-rotate(240deg);">
+    </div> <div class="hub-card" style="background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.2); padding: 25px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+        <div style="width: 60px; height: 60px; background: rgba(123, 47, 242, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+            <i class="fas fa-headphones" style="color: #9d4edd; font-size: 1.5rem;"></i>
+        </div>
+        <h3 style="color: #e0aaff; margin-bottom: 5px;">Your Soundscape</h3>
+        <p style="color: #c8b6ff; font-size: 0.8rem; margin-bottom: 20px; opacity: 0.8;">Two frequencies synced to your neural state</p>
+        
+        <div style="width: 100%; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px; position: relative; z-index: 10;">
+            <p style="font-size: 0.65rem; color: #9d4edd; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Option 01</p>
+            <audio id="ai-music-1" controls style="width: 100%; height: 35px; filter: invert(20%) sepia(80%) saturate(500%) hue-rotate(240deg);">
                 <source src="" type="audio/mpeg">
             </audio>
         </div>
+
+        <div style="width: 100%; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px; position: relative; z-index: 10;">
+            <p style="font-size: 0.65rem; color: #9d4edd; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Option 02</p>
+            <audio id="ai-music-2" controls style="width: 100%; height: 35px; filter: invert(20%) sepia(80%) saturate(500%) hue-rotate(280deg);">
+                <source src="" type="audio/mpeg">
+            </audio>
+        </div>
+    </div>
+</div>
 
         <div class="hub-card" style="grid-column: span 2; background: rgba(157, 78, 221, 0.08); border-radius: 20px; border: 1px solid rgba(157, 78, 221, 0.3); padding: 25px;">
             <h3 style="color: #e0aaff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
@@ -519,10 +531,17 @@
 
                         // Refresh button logic for face card
                         document.addEventListener('DOMContentLoaded', function() {
-                            document.getElementById('refresh-face').onclick = function() {
+document.getElementById('refresh-face').onclick = function() {
                                 // Reset file input
                                 const faceFileInput = document.getElementById('faceFile');
                                 faceFileInput.value = '';
+                                // Reset captured image canvas - clear and hide
+                                const faceCanvas = document.getElementById('facePhoto');
+                                if (faceCanvas) {
+                                    const ctx = faceCanvas.getContext('2d');
+                                    ctx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+                                    faceCanvas.style.display = 'none';
+                                }
                                 // Reset webcam
                                 const video = document.getElementById('camera');
                                 if (video && video.srcObject) {
@@ -534,8 +553,10 @@
                                 // Hide capture button
                                 const captureBtn = document.getElementById('captureBtn');
                                 if (captureBtn) captureBtn.style.display = 'none';
-                                // Reset result
-                                document.getElementById('emotion-result').innerHTML = '<span style="color:#a855f7;">Drop an image or use webcam to analyze emotion.</span>';
+                                // Reset result - show drop instructions
+                                document.getElementById('emotion-result').innerHTML = '';
+                                // Canvas already in drop-area, so image shows there when captured
+                                document.getElementById('emotion-result').innerHTML = '<span style="color:#a855f7;">Ready - Drop image or use webcam.</span>';
                             };
                             // Refresh button logic for eeg card
                             document.getElementById('refresh-eeg').onclick = function() {
@@ -549,18 +570,23 @@
             let capturedCanvas = null;
             let detectedEmotion = null;
 
+            let stream = null;
             function startFaceDetection() {
                 const video = document.getElementById('camera');
                 const captureBtn = document.getElementById('captureBtn');
+                const facePhoto = document.getElementById('facePhoto');
                 video.style.display = 'block';
                 captureBtn.style.display = 'inline-block';
-                navigator.mediaDevices.getUserMedia({ video: {width:320, height:240} })
+                facePhoto.style.display = 'none'; // Hide any previous capture
+                document.getElementById('emotion-result').innerHTML = '';
+                navigator.mediaDevices.getUserMedia({ video: {width:320, height:240, facingMode: 'user'} })
                     .then(s => {
                         stream = s;
                         video.srcObject = stream;
                     })
                     .catch(err => {
-                        alert('Camera access denied.');
+                        alert('Camera access denied. Please allow camera permission.');
+                        console.error('Camera error:', err);
                     });
             }
 
@@ -568,10 +594,28 @@
                 const video = document.getElementById('camera');
                 const canvas = document.getElementById('facePhoto');
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, 320, 240);
+                // Proper scaling and center crop
+                const vw = video.videoWidth || 320;
+                const vh = video.videoHeight || 240;
+                const scaleX = canvas.width / vw;
+                const scaleY = canvas.height / vh;
+                const scale = Math.min(scaleX, scaleY);
+                const scaledW = vw * scale;
+                const scaledH = vh * scale;
+                const offsetX = (canvas.width - scaledW) / 2;
+                const offsetY = (canvas.height - scaledH) / 2;
+                ctx.drawImage(video, 0, 0, vw, vh, offsetX, offsetY, scaledW, scaledH);
                 canvas.style.display = 'block';
+                canvas.style.cursor = 'default';
                 video.style.display = 'none';
                 document.getElementById('captureBtn').style.display = 'none';
+                document.getElementById('emotion-result').innerHTML = '<span style="color:#a855f7;">Image captured! Ready for analysis.</span>';
+                
+                // Stop camera stream
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
                 capturedCanvas = canvas;
             }
 
@@ -628,6 +672,7 @@
                 }
             }
 
+
             function drawEmotionOverlay(canvas, emotion) {
                 const ctx = canvas.getContext('2d');
                 // Simulate face bbox (center 60% area)
@@ -682,45 +727,69 @@
                     const file = e.dataTransfer.files[0];
                     if (file && file.type.startsWith('image/')) {
                         faceFileInput.files = e.dataTransfer.files;
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Image ready for analysis</span>`;
+                        previewImage(file); // Show preview
                     } else {
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
+                        document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Please drop a valid image file.</span>`;
                     }
                 });
                 faceFileInput.addEventListener('change', e => {
                     const file = e.target.files[0];
                     if (file && file.type.startsWith('image/')) {
-                        document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Image ready for analysis</span>`;
+                        previewImage(file);
                     } else {
                         document.getElementById('emotion-result').innerHTML = `<span style='color:red;'>Invalid file type.</span>`;
                     }
                 });
-            // Webcam logic
-            let stream = null;
+
+                function previewImage(file) {
+                    const canvas = document.getElementById('facePhoto');
+                    const ctx = canvas.getContext('2d');
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            // Clear and center crop image
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            const iw = img.width;
+                            const ih = img.height;
+                            const scaleX = canvas.width / iw;
+                            const scaleY = canvas.height / ih;
+                            const scale = Math.min(scaleX, scaleY);
+                            const scaledW = iw * scale;
+                            const scaledH = ih * scale;
+                            const offsetX = (canvas.width - scaledW) / 2;
+                            const offsetY = (canvas.height - scaledH) / 2;
+                            ctx.drawImage(img, 0, 0, iw, ih, offsetX, offsetY, scaledW, scaledH);
+                            canvas.style.display = 'block';
+                            canvas.style.cursor = 'default';
+                            canvas.style.pointerEvents = 'none';
+                            document.getElementById('emotion-result').innerHTML = '<span style="color:#a855f7;">Image preview loaded! Click Analyze Emotion.</span>';
+                            capturedCanvas = canvas;
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            // Webcam logic (removed duplicate declaration)
             function startFaceDetection() {
                 const video = document.getElementById('camera');
                 const captureBtn = document.getElementById('captureBtn');
+                const facePhoto = document.getElementById('facePhoto');
                 video.style.display = 'block';
                 captureBtn.style.display = 'inline-block';
-                navigator.mediaDevices.getUserMedia({ video: true })
+                facePhoto.style.display = 'none'; // Hide any previous capture
+                document.getElementById('emotion-result').innerHTML = '';
+                navigator.mediaDevices.getUserMedia({ video: {width:320, height:240, facingMode: 'user'} })
                     .then(s => {
                         stream = s;
                         video.srcObject = stream;
                     })
                     .catch(err => {
-                        alert('Camera access denied.');
+                        alert('Camera access denied. Please allow camera permission.');
+                        console.error('Camera error:', err);
                     });
             }
-            function captureAndAnalyzeFace() {
-                // Only capture, not analyze
-                const video = document.getElementById('camera');
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth || 180;
-                canvas.height = video.videoHeight || 140;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                document.getElementById('emotion-result').innerHTML = `<span style='color:#a855f7;'>Face image captured (not connected)</span>`;
-            }
+
             // --- EEG Drag & Drop ---
             const eegDropArea = document.getElementById('eeg-drop-area');
             let eegFileInput = document.getElementById('eegFile');

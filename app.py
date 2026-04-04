@@ -16,6 +16,7 @@ from werkzeug.utils import secure_filename
 
 # from google import genai  # Disabled for game demo
 
+from google import genai
 import random
 import google.generativeai as genai
 
@@ -28,12 +29,25 @@ import os
 import base64
 import cv2
 from tensorflow.keras.models import load_model
+from tensorflow.keras.models import model_from_json
 
 from dotenv import load_dotenv
 
 import traceback
 
 load_dotenv()
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai
+ai_model = genai.GenerativeModel('gemini-pro')
+
+print("--- Checking Available Models ---")
+try:
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            print(f"Available Model: {m.name}")
+except Exception as e:
+    print(f"Could not list models: {e}")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 proc = EEGProcessor(fs=256)
@@ -48,9 +62,9 @@ def load_emotion_model():
     try:
         with open(os.path.join(BASE_DIR, 'models', 'emotiondetector.json'), "r") as f:
             model_json = f.read()
-        model = model_from_json(model_json)
-        model.load_weights(os.path.join(BASE_DIR, 'models', 'emotiondetector.h5'))
-        model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+            model = model_from_json(model_json)
+            model.load_weights(os.path.join(BASE_DIR, 'models', 'emotiondetector.h5'))
+            model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
         return model
     except Exception as e:
         print(f"Model load error: {e}")
@@ -64,9 +78,6 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 # DEBUG LINES:
 print(f"Checking for .env file: {os.path.exists('.env')}")
 print(f"Gemini Key loaded: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
-
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-client = genai
 
 # --- database utilities ------------------------------------------------
 
@@ -628,12 +639,12 @@ MUSIC_DATABASE = {
         {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239156/psyai-nervous-system-regulation-for-emotional-safety-476518_op4xok.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239934/image5_fzup2w.webp"},
         {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239138/psyai-alpha-drift-alpha-brainwave-ambient-focus-and-deep-relaxation-481545_uvpjcz.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239933/image2_zvr34k.webp"},
         {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239135/psyai-sensory-reset-for-nervous-system-balance-476524_drzpts.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239932/image1_dfvnvk.webp"},
-        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239131/psyai-gentle-regulation-after-stress-and-anxiety-476520_ef83yh.mp3", "thumb": "THUMB_URL_2"},
-        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239063/fassounds-lofi-study-calm-peaceful-chill-hop-112191_zcxcfm.mp3", "thumb": "THUMB_URL_2"},
-        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239038/fassounds-good-night-lofi-cozy-chill-music-160166_s2kcfd.mp3", "thumb": "THUMB_URL_2"},
-        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238475/lofcosmos-focus-glow-lofi-269098_glhjqq.mp3", "thumb": "THUMB_URL_2"},
-        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238462/lofcosmos-focus-lofi-269097_mjcy6n.mp3", "thumb": "THUMB_URL_2"},
-        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238424/bfcmusic-lofi-lo-fi-511230_f6ab2o.mp3", "thumb": "THUMB_URL_2"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239131/psyai-gentle-regulation-after-stress-and-anxiety-476520_ef83yh.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239931/image8_awemg8.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239063/fassounds-lofi-study-calm-peaceful-chill-hop-112191_zcxcfm.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239930/image4_szjtkw.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775239038/fassounds-good-night-lofi-cozy-chill-music-160166_s2kcfd.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image6_dxvzhs.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238475/lofcosmos-focus-glow-lofi-269098_glhjqq.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239929/image3_bjizuk.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238462/lofcosmos-focus-lofi-269097_mjcy6n.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image9_kluw8z.webp"},
+        {"music": "https://res.cloudinary.com/dkjp9svlj/video/upload/v1775238424/bfcmusic-lofi-lo-fi-511230_f6ab2o.mp3", "thumb": "https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image7_sbwrjf.webp"},
     ]
 }
 
@@ -641,7 +652,7 @@ MUSIC_DATABASE = {
 def generate_ai_recommendation():
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({"error": "User not logged in"}), 401
+        return jsonify({"success": False, "error": "Session expired. Please login again."}), 401
     
     try:
         # 1. Fetch latest EEG report from Supabase
@@ -653,71 +664,89 @@ def generate_ai_recommendation():
             .execute()
 
         if not latest_report.data:
-            return jsonify({"error": "No EEG data found. Please analyze a file first."}), 404
+            return jsonify({"success": False, "error": "No EEG data found. Analyze a file first!"}), 200
 
         report = latest_report.data[0]
-        emotion = report.get('emotion_detected', 'Happy').lower()
-        mood_options = MUSIC_DATABASE.get(emotion, MUSIC_DATABASE["happy"])
-        selected_set = random.choice(mood_options)
+        emotion = str(report.get('emotion_detected', 'Happy')).lower().strip()
         wave = report.get('dominant_wave', 'Alpha')
-        
-        music_url = selected_set["music"]
-        thumb_url = selected_set["thumb"]
 
-        # 3. Gemini Prompt for Quote + 5 Tasks
-        # We use a strict delimiter '|' to easily split the response
-        prompt = f"""
-        The user has {wave} brainwaves and feels {emotion}. 
-        Provide:
-        1. One 1-sentence inspirational quote.
-        2. Five short, distinct wellness tasks (max 10 words each). 
-        If Happy: tasks to stay grounded. If Sad/Angry/Tired: tasks to energize and to stay happy.
-        Return ONLY in this format: Quote | Task1 | Task2 | Task3 | Task4 | Task5
-        """
-
-        quote = "Embrace the rhythm of your mind."
-        tasks = ["Deep breathing", "Drink water", "Stretch", "Short walk", "Smile"]
+        # 2. Get Music Options from Database
+        mood_options = MUSIC_DATABASE.get(emotion, MUSIC_DATABASE.get("happy", []))
         
+        if not mood_options:
+            return jsonify({"success": False, "error": f"No music found for {emotion}"}), 200
+
+        # Select two unique tracks
+        if len(mood_options) >= 2:
+            selected_samples = random.sample(mood_options, 2)
+        else:
+            selected_samples = [mood_options[0], mood_options[0]]
+        
+        track1, track2 = selected_samples[0], selected_samples[1]
+
+        # 3. Define the Prompt (String)
+        ai_prompt_text = f"User has {wave} waves and feels {emotion}. Return ONLY: Quote | Task1 | Task2 | Task3 | Task4 | Task5"
+        
+        # Fallbacks if AI fails
+        ai_quote = "Trust the rhythm of your mind."
+        ai_tasks = ["Deep breathing", "Stay hydrated", "Gentle stretching", "Short walk", "Mindful smile"]
+
+        # 4. Generate Content using the correct SDK syntax
         try:
-            response = client.models.generate_content(
-                model="models/gemini-1.5-flash", 
-                contents=prompt
-            )
-            raw_parts = response.text.strip().split('|')
-            # Clean up whitespace
-            clean_parts = [p.strip() for p in raw_parts]
-            ai_text = response.text.strip()
+            # Note: ai_model was defined at the top as genai.GenerativeModel('gemini-1.5-flash')
+            response = ai_model.generate_content(ai_prompt_text)
             
-            ai_quote = clean_parts[0]
-            ai_tasks = clean_parts[1:6] # Take the next 5 parts
-        except Exception as ai_err:
-            print(f"Gemini Error: {ai_err}")
-            ai_quote = "Trust the rhythm of your mind."
-            ai_tasks = ["Deep breathing", "Drink water", "Stretch", "Short walk", "Smile"]
+            raw_text = response.text.strip()
+            print(f"--- GEMINI RAW START ---\n{raw_text}\n--- GEMINI RAW END ---")
 
+            # Parsing Logic
+            if '|' in raw_text:
+                parts = [p.strip() for p in raw_text.split('|') if p.strip()]
+            else:
+                parts = [p.strip() for p in raw_text.split('\n') if p.strip()]
+
+            import re
+            clean_parts = [re.sub(r'^(\d+\.|\-|\*)\s*', '', p) for p in parts]
+
+            if len(clean_parts) >= 6:
+                ai_quote = clean_parts[0]
+                ai_tasks = clean_parts[1:6] 
+                print("✅ Successfully parsed AI tasks")
+            elif len(clean_parts) > 1:
+                ai_quote = clean_parts[0]
+                ai_tasks = clean_parts[1:6] if len(clean_parts) > 5 else clean_parts[1:]
+            
+        except Exception as ai_err:
+            print(f"❌ Gemini Error: {ai_err}")
+
+        # 5. Save to Supabase
+        try:
             supabase_ctx.table("recommendation").insert({
                 "user_id": user_id,
                 "emotion": emotion,
-                "quote": quote,          # New Column
-                "tasks": tasks,          # New Column (ensure column type is JSON or text[])
-                "music_url": music_url,  # New Column
-                "image_url": thumb_url
+                "quote": ai_quote,
+                "tasks": ai_tasks,
+                "music_url": track1["music"],
+                "image_url": track1["thumb"]
             }).execute()
+        except Exception as db_err:
+            print(f"Supabase Insert Warning: {db_err}")
 
+        # 6. Final Response
         return jsonify({
             "success": True, 
             "quote": ai_quote,
             "tasks": ai_tasks,
-            "image_url": thumb_url,
-            "music_url": music_url,
-            "emotion": emotion.capitalize()
+            "ai_tasks": ["Task 1", "Task 2", "Task 3", "Task 4", "Task 5"],
+            "emotion": emotion.capitalize(),
+            "track1": track1,
+            "track2": track2
         })
 
     except Exception as e:
-        print(f"Route Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"CRITICAL ROUTE ERROR: {e}")
+        return jsonify({"success": False, "error": "Internal Server Error"}), 500
     
-
 videos = [
     {
         "title": "Zen Meditation",
@@ -862,16 +891,23 @@ def predict_face_emotion():
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # 2. Face detection (from enhanced.py)
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        # 2. Face detection (optimized parameters for better detection)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
         emotion = 'no face'
 
         if len(faces) > 0:
             # Take largest face
             (x, y, w, h) = faces[0]
+            # Better preprocessing
             face = gray[y:y+h, x:x+w]
-            face = cv2.resize(face, (48, 48))
+            # Histogram equalization
+            face = cv2.equalizeHist(face)
+            # Resize with INTER_CUBIC for better quality
+            face = cv2.resize(face, (48, 48), interpolation=cv2.INTER_CUBIC)
             face = face.astype('float32') / 255.0
+            # Normalize to mean=0, std=1 (common for FER models)
+            face = (face - np.mean(face)) / np.std(face)
+            face = np.clip(face, -1, 1)
             face = np.reshape(face, (1, 48, 48, 1))
 
             # 3. Predict
@@ -880,12 +916,23 @@ def predict_face_emotion():
             emotion = EMOTION_LABELS[idx]
             confidence = float(preds[0][idx])
 
-        # 4. Log to DB if user logged in
-        user_id = session.get('user_id')
-        if user_id and emotion != 'no face':
-            log = EmotionLog(user_id=user_id, emotion=emotion)
-            db.session.add(log)
-            db.session.commit()
+        # 4. Log to DB if user logged in (commented out due to potential DB issues)
+        # user_id = session.get('user_id')
+        # if user_id and emotion != 'no face':
+        #     log = EmotionLog(user_id=user_id, emotion=emotion)
+        #     db.session.add(log)
+        #     db.session.commit()
+
+        # Log to Supabase
+        try:
+            user_id = session.get('user_id')
+            supabase_ctx.table("face_analysis").insert({
+                "user_id": user_id,
+                "image_url": data,  # base64 image
+                "emotion": emotion
+            }).execute()
+        except Exception as db_err:
+            print(f"Face log save error: {db_err}")
 
         return jsonify({
             "emotion": emotion,
