@@ -29,6 +29,7 @@ from processor import EEGProcessor
 import os
 import base64
 import cv2
+from tensorflow import keras
 from tensorflow.keras.models import load_model
 from tensorflow.keras.models import model_from_json
 
@@ -40,7 +41,7 @@ load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 client = genai
-ai_model = genai.GenerativeModel('gemini-pro')
+ai_model = genai.GenerativeModel('gemini-1.5-flash')
 
 print("--- Checking Available Models ---")
 try:
