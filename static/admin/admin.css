@@ -334,3 +334,43 @@ button:hover { background: var(--accent-hover); }
 .admin-portal .left-section {
     display: none !important;
 }
+
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    position: fixed;
+    background: #1a1a2e;
+    color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar .logo {
+    margin-bottom: 30px;
+}
+
+.sidebar button {
+    background: none;
+    border: none;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: 0.3s;
+}
+
+.sidebar button:hover,
+.btn-active {
+    background: #9d4edd;
+}
+
+.logout {
+    margin-top: auto;
+}
+main {
+    margin-left: 260px;
+    padding: 20px;
+}

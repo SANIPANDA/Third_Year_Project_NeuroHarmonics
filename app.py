@@ -5,6 +5,7 @@ from flask import Flask, render_template, redirect, session, request, url_for, f
 from sqlalchemy import func
 from sqlalchemy.exc import OperationalError
 import supabase
+from models import EmotionLog
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 from models import db, Feedback, ContactMessage, User, CommunityMessage, Admin
@@ -1036,6 +1037,134 @@ def play_space_invaders():
     import subprocess
     subprocess.Popen(['python', 'main.py'], cwd='games/space/Python-Space-Invaders-Game-with-Pygame-main')
     return jsonify({'status': 'Space Invaders launched in new terminal'})
+
+from flask import request, jsonify
+from flask_mail import Mail, Message
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = '06kingbeast@gmail.com'
+app.config['MAIL_PASSWORD'] = '06kingbeast#2328'
+
+mail = Mail(app)
+
+@app.route('/admin')
+def admin_dashboard():
+
+    # 🔥 Count total EEG reports
+    response = supabase_ctx.table("eeg_reports") \
+    .select("*", count="exact") \
+    .execute()
+    analysis_count = len(response.data)
+
+    # Other data
+    users = supabase.table("users").select("*").execute().data
+
+    return render_template(
+        "admin.html",
+        analysis_count=analysis_count,
+        users=users
+    )
+
+def get_user_by_id(user_id):
+    response = supabase.table("users").select("*").eq("id", user_id).execute()
+
+    if response.data:
+        return response.data[0]
+    return None
+
+def insert_notification(user_id, message):
+    supabase.table("notifications").insert({
+        "user_id": user_id,
+        "message": message,
+        "is_read": False
+    }).execute()
+
+def get_unread_notifications(user_id):
+    response = supabase.table("notifications") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .eq("is_read", False) \
+        .execute()
+
+    return response.data
+
+from datetime import date
+
+today = date.today()
+
+response = supabase_ctx.table("eeg_reports") \
+    .select("*", count="exact") \
+    .gte("created_at", str(today)) \
+    .execute()
+
+today_count = response.count
+
+def mark_notifications_read(user_id):
+    supabase.table("notifications") \
+        .update({"is_read": True}) \
+        .eq("user_id", user_id) \
+        .execute()
+
+@app.route('/admin/report-user', methods=['POST'])
+def report_user():
+    data = request.json
+    user_id = data.get('user_id')
+
+    # 🔥 Get user from DB
+    user = get_user_by_id(user_id)  # YOU must implement this
+
+    if not user:
+        return jsonify({"success": False, "message": "User not found"})
+
+    try:
+        msg = Message(
+            subject="⚠️ Account Report Notice - NeuroHarmonics",
+            sender="your_email@gmail.com",
+            recipients=[user.email]
+        )
+
+        msg.body = f"""
+Hello {user.username},
+
+Your account has been reported by the admin due to suspicious or inappropriate activity.
+
+If you believe this is a mistake, please contact support.
+
+Regards,
+NeuroHarmonics Team
+        """
+
+        mail.send(msg)
+        print(f"Report email sent to {user.email}")
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route('/admin/notify-user', methods=['POST'])
+def notify_user():
+    data = request.json
+
+    user_id = data['user_id']
+    message = data['message']
+
+    # Insert into DB
+    insert_notification(user_id, message)  # YOU implement
+
+    return jsonify({"success": True})
+
+@app.route('/get-notifications/<user_id>')
+def get_notifications(user_id):
+    notifications = get_unread_notifications(user_id)
+
+    # Mark as read after fetching
+    mark_notifications_read(user_id)
+
+    return jsonify(notifications)
 
 if __name__ == "__main__":
     # This keeps the server running until you press Ctrl+C

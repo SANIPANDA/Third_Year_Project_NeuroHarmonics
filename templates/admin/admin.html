@@ -3,127 +3,216 @@
 <head>
     <title>Admin | NeuroHarmonics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
+
+    <!-- 🔥 IMPORTANT FIX -->
+    <style>
+        main section {
+            display: none;
+        }
+
+        main section.active {
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
 
+<!-- 🔷 SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+    <h2 class="logo">NeuroAdmin</h2>
+
+    <button onclick="show('dashboard', event)" class="btn-active">📊 Project</button>
+    <button onclick="show('users', event)">👥 Users</button>
+    <button onclick="show('recommend', event)">🧠 Recommendation</button>
+    <button onclick="show('logs', event)">💬 Inquiries</button>
+
+    <div class="logout">
+        <button onclick="logout()">🚪 Logout</button>
+    </div>
+</aside>
+
 <main>
-    <section id="dashboard" class="active">
-        <h1>Performance Dashboard</h1>
-        <div class="cards">
-            <div class="card"><h3>Total Users</h3><p id="usersCount">{{ users_count }}</p></div>
-            <div class="card"><h3>EEG Analysis Total</h3><p id="uploadsCount">{{ analysis_count }}</p></div>
-            <div class="card"><h3>System Status</h3><p id="alertsCount">Optimal</p></div>
-        </div>
-        <div id="three-performance-container" class="three-box"></div>
-    </section>
 
-    <section id="users">
-        <h1>User Management</h1>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>Username</th><th>Status</th><th>Actions</th></tr>
-                </thead>
-                <tbody id="userTable">
-                    {% for user in users %}
-                    <tr>
-                        <td>{{ user.id }}</td>
-                        <td>{{ user.username }}</td>
-                        <td><span class="status-dot {{ user.status }}"></span> {{ user.status }}</td>
-                        <td><button onclick="viewData('{{ user.id }}')">Report</button></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
+<!-- 🔷 DASHBOARD -->
+<section id="dashboard" class="active">
+    <h1>Performance Dashboard</h1>
 
-    <section id="recommend">
-        <h1>Update Wellness Logic</h1>
-        <p>Modify recommendations sent to users based on detected emotions.</p>
-        <div class="form-group">
-            <label>Detected Emotion:</label>
-            <select id="emotion">
-                <option value="Happy">Happy</option>
-                <option value="Sad">Sad</option>
-                <option value="Anxious">Anxious</option>
-            </select>
-            <textarea id="content" placeholder="Enter new AI tip here..."></textarea>
-            <button class="primary-btn" onclick="saveRecommendation()">Update Supabase</button>
+    <div class="cards">
+        <div class="card">
+            <h3>Total Users</h3>
+            <p>{{ users_count }}</p>
         </div>
-    </section>
 
-    <section id="logs">
-        <h1>Customer Inquiries</h1>
-        <div class="log-container">
-            {% for msg in messages %}
-            <div class="log-item">
-                <strong>{{ msg.name }}:</strong> {{ msg.message }}
-                <button onclick="replyTo('{{ msg.id }}')">Reply</button>
-            </div>
-            {% endfor %}
+        <div class="card">
+            <h3>EEG Analysis Total</h3>
+            <p>{{ analysis_count }}</p>
         </div>
-    </section>
-    <div id="replyModal" class="modal">
-    <div class="modal-content glass-card">
+
+        <div class="card">
+            <h3>System Status</h3>
+            <p>Optimal</p>
+        </div>
+    </div>
+
+    <p>Today: {{ today_count }}</p>
+
+    <div id="three-performance-container" class="three-box"></div>
+</section>
+
+<!-- 🔷 USERS -->
+<section id="users">
+    <h1>User Management</h1>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>
+                        <span class="status-dot {{ user.status }}"></span>
+                        {{ user.status }}
+                    </td>
+                    <td>
+                        <button onclick="sendReport('{{ user.id }}')">Report</button>
+                        <button onclick="openNotifyModal('{{ user.id }}')">Notify</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- 🔷 RECOMMENDATION -->
+<section id="recommend">
+    <h1>Update Wellness Logic</h1>
+
+    <div class="form-group">
+        <label>Detected Emotion:</label>
+
+        <select id="emotion">
+            <option value="Happy">Happy</option>
+            <option value="Sad">Sad</option>
+            <option value="Anxious">Anxious</option>
+        </select>
+
+        <textarea id="content" placeholder="Enter AI recommendation..."></textarea>
+
+        <button onclick="saveRecommendation()">Update</button>
+    </div>
+
+    <!-- EEG DATA -->
+    <h2>EEG Reports</h2>
+
+    <div class="eeg-container">
+        {% for eeg in eeg_reports %}
+        <div class="eeg-card">
+            <p><strong>User:</strong> {{ eeg.user_id }}</p>
+            <p><strong>Emotion:</strong> {{ eeg.emotion_detected }}</p>
+
+            <button onclick="sendRecommendation('{{ eeg.user_id }}', '{{ eeg.emotion_detected }}')">
+                Send Recommendation
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- 🔷 INQUIRIES -->
+<section id="logs">
+    <h1>Customer Inquiries</h1>
+
+    <div class="log-container">
+        {% for msg in messages %}
+        <div class="log-item">
+            <strong>{{ msg.name }}</strong>: {{ msg.message }}
+            <button onclick="replyTo('{{ msg.id }}')">Reply</button>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+</main>
+
+<!-- 🔷 REPLY MODAL -->
+<div id="replyModal" class="modal">
+    <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
-        <h2><i class="fas fa-reply"></i> Send Response</h2>
-        
-        <input type="hidden" id="replyMsgId"> 
-        
-        <textarea id="adminReplyText" placeholder="Type your message..."></textarea>
-        
+
+        <h2>Reply</h2>
+
+        <input type="hidden" id="replyMsgId">
+        <textarea id="adminReplyText"></textarea>
+
         <div class="modal-actions">
-            <button class="cancel-btn" onclick="closeModal()">Cancel</button>
-            <button class="primary-btn" id="sendReplyBtn" onclick="submitReply()">Send Message</button>
+            <button onclick="closeModal()">Cancel</button>
+            <button id="sendReplyBtn" onclick="submitReply()">Send</button>
         </div>
     </div>
 </div>
 
+<!-- 🔷 NOTIFY MODAL -->
+<div id="notifyModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeNotifyModal()">&times;</span>
+
+        <h2>Send Notification</h2>
+
+        <input type="hidden" id="notifyUserId">
+        <textarea id="notifyText"></textarea>
+
+        <div class="modal-actions">
+            <button onclick="sendNotification()">Send</button>
+            <button onclick="notifyAll()">Notify All</button>
+        </div>
+    </div>
+</div>
+
+<!-- 🔷 STYLES -->
 <style>
-/* Modal Backdrop */
 .modal {
-    display: none; 
-    position: fixed; 
-    z-index: 1000; 
-    left: 0; top: 0; width: 100%; height: 100%; 
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(5px);
-    align-items: center; justify-content: center;
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
 }
 
-/* Modal Content */
 .modal-content {
     background: white;
-    padding: 30px;
-    border-radius: 15px;
-    width: 450px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    position: relative;
+    padding: 20px;
+    border-radius: 12px;
+    width: 400px;
 }
 
-.close-btn { position: absolute; right: 20px; top: 15px; font-size: 24px; cursor: pointer; color: #666; }
-
-#adminReplyText {
+textarea {
     width: 100%;
-    height: 120px;
-    margin: 15px 0;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-family: inherit;
-    resize: none;
+    height: 100px;
 }
 
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-.cancel-btn { background: #eee; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-.primary-btn { background: #9d4edd; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.eeg-card {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 10px 0;
+}
 </style>
-</main>
 
+<!-- 🔷 SCRIPTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="{{ url_for('static', filename='admin/admin.js') }}"></script>
+
 </body>
 </html>
-<!-- Music Player Script -->
-<script src="{{ url_for('static', filename='music_player.js') }}"></script>
