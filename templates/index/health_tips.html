@@ -72,6 +72,11 @@
     {% endfor %}
   </div>
 </div>
+<div class="video-section ai-video-section">
+  <h2 class="section-title">Tips Recommended for You</h2>
+  <p class="section-subtitle">Wellness clips</p>
+  <div id="aiVideoContainer" class="video-gallery-grid"></div>
+</div>
 
     <!-- Hidden audio element for playing music -->
     <audio id="recommendationAudio"></audio>
@@ -104,33 +109,7 @@
       </div>
     </div>
 
-<div class="video-section">
-  <h2 class="section-title"></h2>
-  <div class="video-gallery-grid">
-    {% for v in videos %}
-      <div class="video-card">
-        <div class="video-thumb-container">
-          {% if v.thumb or v.thumb_url %}
-            <img class="video-thumb" 
-                 src="{{ v.thumb_url if v.thumb_url else url_for('static', filename=v.thumb) }}" 
-                 alt="{{ v.title }} thumbnail">
-          {% endif %}
 
-          {# Use Cloudinary URL if available, otherwise fallback to local path #}
-          {% set video_final_url = v.video_url if v.video_url else url_for('static', filename=v.video_path) %}
-          
-          <button class="play-btn" onclick="playVideo('{{ video_final_url }}', '{{ v.title }}')">
-            <i class="fas fa-play"></i>
-          </button>
-        </div>
-        <div class="video-title">{{ v.title }}</div>
-        <div class="video-quote">"{{ v.quote }}"</div>
-        <div class="video-tip">{{ v.tip }}</div>            
-        <div class="motivational-line" data-card-type="video"></div>          
-      </div>
-    {% endfor %}
-  </div>
-</div>
     <!-- Yoga Recommendations Section -->
     <div class="yoga-section">
       <h2 class="section-title">Yoga Recommendations for You</h2>
@@ -169,27 +148,61 @@
           <h3>Physical Well-being</h3>
           <p>Good emotional health reduces risk of chronic diseases and boosts immunity.</p>
         </div>
-        <div class="importance-card">
-          <h3>Diseases from Neglect</h3>
-          <ul>
-            <li>Depression</li>
-            <li>Anxiety Disorders</li>
-            <li>Heart Disease</li>
-            <li>Sleep Disorders</li>
-            <li>Digestive Problems</li>
-          </ul>
-        </div>
       </div>
     </div>
 
     <!-- Three.js canvas for visual effect -->
     <div id="threejs-bg"></div>
-  </main>
 
+    <div class="disease-section">
+  <h2 class="section-title">Impact of Ignoring Mental Health</h2>
+  <p class="section-subtitle">Long-term neglect can lead to serious health conditions</p>
+
+  <!-- ROW 1 (3 CARDS) -->
+  <div class="disease-row">
+    
+    <div class="disease-card">
+      <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461679/depression_oloyk3.webp">
+      <h3>Depression</h3>
+      <p>Chronic stress and emotional suppression lead to persistent sadness and low energy.</p>
+    </div>
+
+    <div class="disease-card">
+      <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461679/anxiety_disorder_njxpvv.jpg">
+      <h3>Anxiety Disorder</h3>
+      <p>Continuous stress activates the nervous system causing panic and worry.</p>
+    </div>
+
+    <div class="disease-card">
+      <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461680/heart_disease_tzkfwa.webp">
+      <h3>Heart Disease</h3>
+      <p>Long-term stress increases blood pressure and damages heart health.</p>
+    </div>
+
+  </div>
+
+  <!-- ROW 2 (2 CARDS CENTERED) -->
+  <div class="disease-row bottom-row">
+    
+    <div class="disease-card">
+      <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461680/digestive_problem_bf2h1f.webp">
+      <h3>Digestive Problems</h3>
+      <p>Stress disrupts gut-brain communication causing IBS and acidity.</p>
+    </div>
+
+    <div class="disease-card">
+      <img src="https://res.cloudinary.com/dkjp9svlj/image/upload/v1774461681/Sleep-Disorder_zqsih1.jpg">
+      <h3>Sleep Disorders</h3>
+      <p>Mental overload affects sleep cycles leading to insomnia.</p>
+    </div>
+
+  </div>
+</div>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="{{ url_for('static', filename='index/tips.js') }}"></script>
   <script src="{{ url_for('static', filename='index/script.js') }}"></script>
-  <script src="{{ url_for('static', filename='music_player.js') }}"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>  
+  <script src="{{ url_for('static', filename='music_player.js') }}"></script> 
 
 </body>
 </html>

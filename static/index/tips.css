@@ -527,3 +527,88 @@ body {
 .tip-image {
     transition: transform 0.6s ease;
 }
+/* ===== AI VIDEO SECTION ===== */
+.ai-video-section {
+  margin: 60px auto 0 auto;
+  max-width: 1200px;
+  text-align: center;
+}
+
+.ai-video-section .section-title {
+  color: #a855f7;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+}
+
+.section-subtitle {
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+/* AI Video Card Styling */
+.ai-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ===== DISEASE SECTION ===== */
+.disease-section {
+  max-width: 1200px;
+  margin: 60px auto;
+  text-align: center;
+}
+
+/* ROW */
+.disease-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+/* SECOND ROW CENTERED */
+.bottom-row {
+  justify-content: center;
+}
+
+/* CARD */
+.disease-card {
+  width: 30%;
+  background: rgba(255,255,255,0.05);
+  border-radius: 20px;
+  overflow: hidden;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: 0.3s;
+}
+
+/* SECOND ROW SIZE FIX */
+.bottom-row .disease-card {
+  width: 30%;
+}
+
+/* IMAGE */
+.disease-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+/* TEXT */
+.disease-card h3 {
+  color: white;
+  padding: 10px;
+}
+
+.disease-card p {
+  color: #00ff88;
+  padding: 0 15px 15px;
+  font-size: 0.95rem;
+}
+
+/* HOVER */
+.disease-card:hover {
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 0 15px 40px rgba(168,85,247,0.5);
+}
