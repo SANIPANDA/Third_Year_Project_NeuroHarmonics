@@ -3,8 +3,12 @@ import logging
 import sqlalchemy
 from flask import Flask, render_template, redirect, session, request, url_for, flash, jsonify
 from sqlalchemy import func
+from supabase import create_client, Client
 from sqlalchemy.exc import OperationalError
-import supabase
+try:
+    import supabase
+except ImportError:
+    supabase = None
 from models import EmotionLog
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -12,14 +16,13 @@ from models import db, Feedback, ContactMessage, User, CommunityMessage, Admin
 from auth_routes import auth
 from admin_routes import admin 
 from datetime import datetime
-from supabase import create_client, Client
+# from supabase import create_client, Client
 from werkzeug.utils import secure_filename
 
-# from google import genai  # Disabled for game demo
+# from google import genai
 
-from google import genai
 import random
-import google.generativeai as genai
+from google import genai
 
 import pandas as pd
 import numpy as np
@@ -33,23 +36,48 @@ from tensorflow import keras
 from tensorflow.keras.models import load_model
 from tensorflow.keras.models import model_from_json
 
-from dotenv import load_dotenv
-
 import traceback
 
+from dotenv import load_dotenv
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-client = genai
-ai_model = genai.GenerativeModel('gemini-1.5-flash')
+# --- database utilities ------------------------------------------------
 
-print("--- Checking Available Models ---")
-try:
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            print(f"Available Model: {m.name}")
-except Exception as e:
-    print(f"Could not list models: {e}")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        from supabase import create_client
+        supabase_ctx = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("✅ Supabase API Client initialized.")
+    except Exception as e:
+        print(f"❌ Supabase API failed: {e}")
+
+
+def get_database_uri():
+    # Force SQLAlchemy to use the Supabase Postgres URL
+    uri = DATABASE_URL
+    if not uri:
+        print("⚠️ DATABASE_URL missing! Falling back to local (NOT RECOMMENDED FOR DEPLOYMENT)")
+        uri = "sqlite:///neuroharmonics.db"
+    
+    if uri and uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+    return uri
+
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+ai_client = None
+client = None
+if GEMINI_API_KEY:
+    try:
+        # Initialize the modern Client
+        ai_client = genai.Client(api_key=GEMINI_API_KEY)
+        print("✅ Gemini AI (New SDK) initialized successfully.")
+    except Exception as e:
+        print(f"❌ Gemini init failed: {e}")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 proc = EEGProcessor(fs=256)
@@ -77,22 +105,6 @@ emotion_model = load_emotion_model()
 EMOTION_LABELS = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# DEBUG LINES:
-print(f"Checking for .env file: {os.path.exists('.env')}")
-print(f"Gemini Key loaded: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
-
-# --- database utilities ------------------------------------------------
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase_ctx: Client = create_client(SUPABASE_URL, SUPABASE_KEY)  # Disabled for game demo
-
-def get_database_uri():
-    uri = os.getenv("DATABASE_URL", "sqlite:///neuroharmonics.db")
-    print(f"Using DB: {uri}")
-    return uri
-
-print("Starting NeuroHarmonics Flask app...")
 app = Flask(__name__)
 app.secret_key = "super-secret-key"
 
@@ -105,6 +117,13 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 db.init_app(app)
+
+with app.app_context():
+    try:
+        db.create_all()
+        print("✅ Database tables created successfully!")
+    except Exception as e:
+        print(f"❌ Error creating tables: {e}")
 
 app.register_blueprint(auth)
 app.register_blueprint(admin)
@@ -156,10 +175,12 @@ def dashboard():
         personal_inquiries = []
     if not user:
         return redirect("/login")
+    supabase_url = SUPABASE_URL if supabase_ctx else None
+    supabase_key = SUPABASE_KEY if supabase_ctx else None
     return render_template("dashboard/dashboard.html",
                            user=user,
-                           SUPABASE_URL=os.getenv("SUPABASE_URL"),
-                           SUPABASE_KEY=os.getenv("SUPABASE_KEY"), 
+                           SUPABASE_URL=supabase_url,
+                           SUPABASE_KEY=supabase_key,
                            username=user.username, 
                            community_messages=messages,
                            inquiries=personal_inquiries)
@@ -672,54 +693,47 @@ def generate_ai_recommendation():
         emotion = str(report.get('emotion_detected', 'Happy')).lower().strip()
         wave = report.get('dominant_wave', 'Alpha')
 
-        # 2. Get Music Options from Database
+        # 2. Get Music Options
         mood_options = MUSIC_DATABASE.get(emotion, MUSIC_DATABASE.get("happy", []))
-        
         if not mood_options:
             return jsonify({"success": False, "error": f"No music found for {emotion}"}), 200
 
-        # Select two unique tracks
-        if len(mood_options) >= 2:
-            selected_samples = random.sample(mood_options, 2)
-        else:
-            selected_samples = [mood_options[0], mood_options[0]]
-        
+        selected_samples = random.sample(mood_options, 2) if len(mood_options) >= 2 else [mood_options[0], mood_options[0]]
         track1, track2 = selected_samples[0], selected_samples[1]
 
-        # 3. Define the Prompt (String)
+        # 3. Define the Prompt
         ai_prompt_text = f"User has {wave} waves and feels {emotion}. Return ONLY: Quote | Task1 | Task2 | Task3 | Task4 | Task5"
         
-        # Fallbacks if AI fails
+        # Fallbacks
         ai_quote = "Trust the rhythm of your mind."
         ai_tasks = ["Deep breathing", "Stay hydrated", "Gentle stretching", "Short walk", "Mindful smile"]
 
-        # 4. Generate Content using the correct SDK syntax
-        try:
-            # Note: ai_model was defined at the top as genai.GenerativeModel('gemini-1.5-flash')
-            response = ai_model.generate_content(ai_prompt_text)
-            
-            raw_text = response.text.strip()
-            print(f"--- GEMINI RAW START ---\n{raw_text}\n--- GEMINI RAW END ---")
+        # 4. Generate Content using the NEW SDK
+        if ai_client:
+            try:
+                # The syntax changes from generate_content(text) to contents=text
+                response = ai_client.models.generate_content(
+                    model="gemini-1.5-flash", 
+                    contents=ai_prompt_text
+                )
+                
+                raw_text = response.text.strip()
+                print(f"--- GEMINI RAW ---\n{raw_text}")
 
-            # Parsing Logic
-            if '|' in raw_text:
-                parts = [p.strip() for p in raw_text.split('|') if p.strip()]
-            else:
-                parts = [p.strip() for p in raw_text.split('\n') if p.strip()]
+                # Parsing Logic (remains same)
+                if '|' in raw_text:
+                    parts = [p.strip() for p in raw_text.split('|') if p.strip()]
+                else:
+                    parts = [p.strip() for p in raw_text.split('\n') if p.strip()]
 
-            import re
-            clean_parts = [re.sub(r'^(\d+\.|\-|\*)\s*', '', p) for p in parts]
+                import re
+                clean_parts = [re.sub(r'^(\d+\.|\-|\*)\s*', '', p) for p in parts]
 
-            if len(clean_parts) >= 6:
-                ai_quote = clean_parts[0]
-                ai_tasks = clean_parts[1:6] 
-                print("✅ Successfully parsed AI tasks")
-            elif len(clean_parts) > 1:
-                ai_quote = clean_parts[0]
-                ai_tasks = clean_parts[1:6] if len(clean_parts) > 5 else clean_parts[1:]
-            
-        except Exception as ai_err:
-            print(f"❌ Gemini Error: {ai_err}")
+                if len(clean_parts) >= 6:
+                    ai_quote = clean_parts[0]
+                    ai_tasks = clean_parts[1:6] 
+            except Exception as ai_err:
+                print(f"❌ Gemini API Error: {ai_err}")
 
         # 5. Save to Supabase
         try:
@@ -734,12 +748,10 @@ def generate_ai_recommendation():
         except Exception as db_err:
             print(f"Supabase Insert Warning: {db_err}")
 
-        # 6. Final Response
         return jsonify({
             "success": True, 
             "quote": ai_quote,
             "tasks": ai_tasks,
-            "ai_tasks": ["Task 1", "Task 2", "Task 3", "Task 4", "Task 5"],
             "emotion": emotion.capitalize(),
             "track1": track1,
             "track2": track2
@@ -748,20 +760,6 @@ def generate_ai_recommendation():
     except Exception as e:
         print(f"CRITICAL ROUTE ERROR: {e}")
         return jsonify({"success": False, "error": "Internal Server Error"}), 500
-    
-videos = [
-    {
-        "title": "Zen Meditation",
-        "quote": "Peace comes from within.",
-        "tip": "Focus on your breath.",
-        "video_path": "videos/meditation.mp4", # Local fallback
-        "video_url": "https://res.cloudinary.com/demo/video/upload/v1/meditation.mp4", # Cloudinary
-        "thumb": "images/meditation_thumb.jpg", # Local fallback
-        "thumb_url": "https://res.cloudinary.com/demo/image/upload/v1/meditation_thumb.jpg" # Cloudinary
-    },
-    # ... more videos
-]
-
 @app.route('/predict_eeg', methods=['POST'])
 def predict_eeg():
     avg_features = None 
@@ -1040,7 +1038,11 @@ def play_space_invaders():
     return jsonify({'status': 'Space Invaders launched in new terminal'})
 
 from flask import request, jsonify
-from flask_mail import Mail, Message
+try:
+    from flask_mail import Mail, Message
+except ImportError:
+    Mail = None
+    Message = None
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -1048,7 +1050,10 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = '06kingbeast@gmail.com'
 app.config['MAIL_PASSWORD'] = '06kingbeast#2328'
 
-mail = Mail(app)
+if Mail:
+    mail = Mail(app)
+else:
+    mail = None
 
 @app.route('/admin')
 def admin_dashboard():
@@ -1060,7 +1065,7 @@ def admin_dashboard():
     analysis_count = len(response.data)
 
     # Other data
-    users = supabase.table("users").select("*").execute().data
+    users = supabase_ctx.table("users").select("*").execute().data
 
     return render_template(
         "admin.html",
@@ -1069,41 +1074,73 @@ def admin_dashboard():
     )
 
 def get_user_by_id(user_id):
-    response = supabase.table("users").select("*").eq("id", user_id).execute()
+    response = supabase_ctx.table("users").select("*").eq("id", user_id).execute()
 
     if response.data:
         return response.data[0]
     return None
 
 def insert_notification(user_id, message):
-    supabase.table("notifications").insert({
+    supabase_ctx.table("notifications").insert({
         "user_id": user_id,
         "message": message,
         "is_read": False
     }).execute()
 
 def get_unread_notifications(user_id):
-    response = supabase.table("notifications") \
-        .select("*") \
-        .eq("user_id", user_id) \
-        .eq("is_read", False) \
-        .execute()
+    # Use the global context variable we defined at the top of app.py
+    global supabase_ctx
+    
+    # 1. Check if the connection exists
+    if supabase_ctx is None:
+        print("⚠️ Supabase client not initialized. Returning empty notifications.")
+        return []
 
-    return response.data
+    try:
+        # 2. Perform the query using the correct variable name: supabase_ctx
+        response = supabase_ctx.table("notifications") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("is_read", False) \
+            .execute()
+
+        # 3. Safely return the data
+        return response.data if hasattr(response, 'data') else []
+
+    except Exception as e:
+        print(f"❌ Error fetching notifications: {e}")
+        return []
 
 from datetime import date
 
 today = date.today()
+today_count = 0  # Default value if database is unreachable
 
-response = supabase_ctx.table("eeg_reports") \
-    .select("*", count="exact") \
-    .gte("created_at", str(today)) \
-    .execute()
+# 1. Safety Check: Ensure the database client exists
+if supabase_ctx is not None:
+    try:
+        # 2. Perform the query safely
+        response = supabase_ctx.table("eeg_reports") \
+            .select("*", count="exact") \
+            .gte("created_at", str(today)) \
+            .execute()
 
-today_count = response.count
+        # 3. Safely extract the count
+        if hasattr(response, 'count'):
+            today_count = response.count
+            print(f"✅ Success: Found {today_count} EEG reports for {today}")
+            
+    except Exception as e:
+        # This catches network errors or table-name typos
+        print(f"❌ Database Query Error: {e}")
+        today_count = 0 
+else:
+    # This prevents the "NoneType" AttributeError on a new machine
+    print("⚠️ Supabase client not initialized. 'today_count' set to 0.")
+    today_count = 0
 
 def mark_notifications_read(user_id):
-    supabase.table("notifications") \
+    supabase_ctx.table("notifications") \
         .update({"is_read": True}) \
         .eq("user_id", user_id) \
         .execute()
@@ -1120,13 +1157,14 @@ def report_user():
         return jsonify({"success": False, "message": "User not found"})
 
     try:
-        msg = Message(
-            subject="⚠️ Account Report Notice - NeuroHarmonics",
-            sender="your_email@gmail.com",
-            recipients=[user.email]
-        )
+        if mail:
+            msg = Message(
+                subject="⚠️ Account Report Notice - NeuroHarmonics",
+                sender="your_email@gmail.com",
+                recipients=[user.email]
+            )
 
-        msg.body = f"""
+            msg.body = f"""
 Hello {user.username},
 
 Your account has been reported by the admin due to suspicious or inappropriate activity.
@@ -1135,10 +1173,12 @@ If you believe this is a mistake, please contact support.
 
 Regards,
 NeuroHarmonics Team
-        """
+            """
 
-        mail.send(msg)
-        print(f"Report email sent to {user.email}")
+            mail.send(msg)
+            print(f"Report email sent to {user.email}")
+        else:
+            print(f"Email not sent (Flask-Mail unavailable): {user.email}")
 
         return jsonify({"success": True})
 
@@ -1168,5 +1208,6 @@ def get_notifications(user_id):
     return jsonify(notifications)
 
 if __name__ == "__main__":
-    # This keeps the server running until you press Ctrl+C
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Use the port assigned by the cloud provider, default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
