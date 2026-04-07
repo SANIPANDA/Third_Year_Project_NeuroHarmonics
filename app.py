@@ -43,6 +43,8 @@ load_dotenv()
 
 # --- database utilities ------------------------------------------------
 
+supabase_ctx = None
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -57,14 +59,23 @@ if SUPABASE_URL and SUPABASE_KEY:
 
 
 def get_database_uri():
-    # Force SQLAlchemy to use the Supabase Postgres URL
-    uri = DATABASE_URL
-    if not uri:
-        print("⚠️ DATABASE_URL missing! Falling back to local (NOT RECOMMENDED FOR DEPLOYMENT)")
-        uri = "sqlite:///neuroharmonics.db"
+    # 1. Pull from environment
+    uri = os.getenv("DATABASE_URL")
     
-    if uri and uri.startswith("postgres://"):
+    if not uri:
+        print("⚠️ DATABASE_URL missing! Falling back to local SQLite.")
+        return "sqlite:///neuroharmonics.db"
+    
+    # 2. Fix the 'postgres://' vs 'postgresql://' issue (SQLAlchemy 1.4+ requirement)
+    if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
+    
+    # 3. Handle SSL for Supabase/Cloud deployment
+    # If the URI doesn't already have SSL parameters, append them
+    if "sslmode" not in uri:
+        separator = "&" if "?" in uri else "?"
+        uri += f"{separator}sslmode=require"
+        
     return uri
 
 
