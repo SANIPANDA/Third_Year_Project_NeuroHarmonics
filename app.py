@@ -145,6 +145,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Create the folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+print(f"DEBUG: DATABASE_URL present? {'Yes' if os.environ.get('DATABASE_URL') else 'No'}")
+
 # --- Routes ---
 
 @app.route("/")
