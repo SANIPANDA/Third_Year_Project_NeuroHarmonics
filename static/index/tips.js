@@ -146,20 +146,170 @@ function closeModal() {
     });
 
 function initThreeJS(container) {
+
+    // 🔥 Prevent crash if THREE is not loaded
+    if (typeof THREE === "undefined") {
+        console.warn("Three.js not loaded — skipping background animation");
+        return;
+    }
+
     let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    let camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+    );
+
     let renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
+
+    if (container) {
+        container.appendChild(renderer.domElement);
+    }
+
     camera.position.z = 8;
 
     let particles = new THREE.Group();
-    let particleMaterial = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.25 });
+
+    let particleMaterial = new THREE.MeshBasicMaterial({
+        color: 0xa855f7,
+        transparent: true,
+        opacity: 0.25
+    });
+
     for (let i = 0; i < 80; i++) {
-        let geo = new THREE.SphereGeometry(Math.random() * 0.18 + 0.08, 12, 12);
+        let geo = new THREE.SphereGeometry(
+            Math.random() * 0.18 + 0.08,
+            12,
+            12
+        );
+
         let mesh = new THREE.Mesh(geo, particleMaterial.clone());
-        mesh.position.set((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8);
+
+        mesh.position.set(
+            (Math.random() - 0.5) * 16,
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 8
+        );
+
         particles.add(mesh);
     }
+
     scene.add(particles);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        particles.rotation.y += 0.0008;
+        particles.rotation.x += 0.0003;
+        renderer.render(scene, camera);
+    }
+
+    animate();
 }
+// ===== AI VIDEO SYSTEM =====
+
+function playVideo(src, title) {
+  const modal = document.getElementById('videoModal');
+  const video = document.getElementById('modalVideo');
+  const titleEl = document.getElementById('modalTitle');
+
+  if (!modal || !video) return;
+
+  video.src = src;
+  titleEl.innerText = title;
+  modal.style.display = 'block';
+}
+
+function closeModal() {
+  const modal = document.getElementById('videoModal');
+  const video = document.getElementById('modalVideo');
+
+  if (modal) modal.style.display = 'none';
+  if (video) {
+    video.pause();
+    video.src = "";
+  }
+}
+
+/* 🔥 AI VIDEO SYSTEM FIXED */
+document.addEventListener("DOMContentLoaded", function () {
+
+  console.log("AI VIDEO SCRIPT RUNNING"); // DEBUG
+
+  const container = document.getElementById("aiVideoContainer");
+
+  if (!container) {
+    console.error("Container NOT FOUND");
+    return;
+  }
+
+  const videos = [
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774462195/Create_a_new_morning_routine_kluj7i.mp4",
+    title: "Morning Reset",
+    tip: "Start your day with a structured routine to stabilize your mind."
+  },
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461866/finding_goal_gi2kgp.mp4",
+    title: "Find Your Purpose",
+    tip: "Clarity in goals reduces anxiety and improves focus."
+  },
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461854/spending_time_happily_ayopl1.mp4",
+    title: "Joyful Living",
+    tip: "Spend time doing things that genuinely make you happy."
+  },
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461797/relaxed_time_pxuqkz.mp4",
+    title: "Relaxation Time",
+    tip: "Take breaks to recharge your brain and reduce stress."
+  },
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461762/promise_to_a_friend_nxzjyg.mp4",
+    title: "Connection Matters",
+    tip: "Strong social bonds improve emotional resilience."
+  },
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461733/happy_activities_gnkq6o.mp4",
+    title: "Stay Active",
+    tip: "Engaging in activities boosts dopamine naturally."
+  },
+  {
+    url: "https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461730/body_movements_fsymqg.mp4",
+    title: "Move Your Body",
+    tip: "Physical movement enhances mental clarity."
+  }
+];
+
+  // Shuffle
+  const shuffled = videos.sort(() => 0.5 - Math.random()).slice(0, 4);
+
+    shuffled.forEach((v, i) => {
+        const card = document.createElement("div");
+        card.className = "video-card ai-card";
+
+        card.innerHTML = `
+    <div class="video-thumb-container">
+      <video muted loop class="video-thumb">
+        <source src="${v.url}" type="video/mp4">
+      </video>
+      <button class="play-btn" onclick="playVideo('${v.url}', '${v.title}')">
+        <i class="fas fa-play"></i>
+      </button>
+    </div>
+
+    <div class="video-title">${v.title}</div>
+
+    <div class="video-tip">${v.tip}</div>
+  `;
+
+        container.appendChild(card);
+
+        const vid = card.querySelector("video");
+
+        card.addEventListener("mouseenter", () => vid.play());
+        card.addEventListener("mouseleave", () => vid.pause());
+    });
+
+});
