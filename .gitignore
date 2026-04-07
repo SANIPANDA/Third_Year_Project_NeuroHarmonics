@@ -1,6 +1,10 @@
+!requirements.txt
+!models/
+!models/*.h5
+!models/*.json
+!models/*.pkl
 *.csv
 *.edf
-*.pkl
 uploads/
 __pycache__/
 
