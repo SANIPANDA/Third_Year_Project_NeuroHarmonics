@@ -866,12 +866,12 @@ window.addEventListener('resize', () => {
     function toggleMusicPanel() {
         const panel = document.getElementById('music-panel');
         panel.classList.toggle('open');
-        const btn = document.getElementById('playPauseBtn');
+        const btn = document.getElementById('play-btn');
         btn.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
     }
 
 // The ?. prevents the error if playPauseBtn is missing
-document.getElementById('playPauseBtn')?.addEventListener('click', function() {
+document.getElementById('play-Btn')?.addEventListener('click', function() {
     this.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying 
         ? '<i class="fas fa-pause"></i>' 
         : '<i class="fas fa-play"></i>';

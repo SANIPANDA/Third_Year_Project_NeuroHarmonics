@@ -1,15 +1,39 @@
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('main');
+    
+    if (sidebar) {
+        sidebar.classList.toggle('collapsed');
+        
+        // Optional: Adjust main content margin dynamically if not handled by CSS
+        if (sidebar.classList.contains('collapsed')) {
+            mainContent.style.marginLeft = "70px";
+        } else {
+            mainContent.style.marginLeft = "250px";
+        }
+    }
+}
+
 // 🔷 SECTION SWITCHING
 function show(sectionId, event) {
-    document.querySelectorAll('main section').forEach(sec => {
+    // 1. Hide all sections
+    const sections = document.querySelectorAll('main section');
+    sections.forEach(sec => {
         sec.classList.remove('active');
+        sec.style.display = 'none'; // Force hide
     });
 
-    document.getElementById(sectionId).classList.add('active');
+    // 2. Show the targeted section
+    const activeSection = document.getElementById(sectionId);
+    if (activeSection) {
+        activeSection.classList.add('active');
+        activeSection.style.display = 'block'; // Force show
+    }
 
+    // 3. Update sidebar button styling
     document.querySelectorAll('.sidebar button').forEach(btn => {
         btn.classList.remove('btn-active');
     });
-
     if (event) {
         event.currentTarget.classList.add('btn-active');
     }
@@ -75,18 +99,53 @@ async function saveRecommendation() {
     }
 }
 
-// 🔴 REPORT USER
-async function sendReport(userId) {
-    const response = await fetch('/admin/report-user', {
+// Toggle all checkboxes
+function toggleSelectAll() {
+    const master = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = master);
+}
+
+// Delete Selected
+async function deleteSelected() {
+    const selected = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) return alert("Select users first!");
+
+    if (confirm(`Delete ${selected.length} users permanently?`)) {
+        const res = await fetch('/admin/delete-users', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_ids: selected })
+        });
+        if ((await res.json()).success) location.reload();
+    }
+}
+
+// Add New User
+async function submitNewUser() {
+    const username = document.getElementById('newUsername').value;
+    const email = document.getElementById('newEmail').value;
+    const password = document.getElementById('newPassword').value;
+
+    const res = await fetch('/admin/add-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username, email, password })
+    });
+    if ((await res.json()).success) {
+        alert("User Added!");
+        location.reload();
+    }
+}
+
+// Report User (Email trigger)
+async function sendReport(userId) {
+    if (!confirm("Send report email to this user?")) return;
+    const res = await fetch('/admin/report-user', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ user_id: userId })
     });
-
-    const result = await response.json();
-    if (result.success) {
-        alert("User reported successfully!");
-    }
+    if ((await res.json()).success) alert("Report email sent!");
 }
 
 // 🟢 OPEN NOTIFY MODAL
@@ -271,3 +330,47 @@ function showNotificationPopup(messages) {
 
     setTimeout(() => box.remove(), 5000);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Get data from the global window object (Injected via HTML)
+    const labels = window.chartData ? window.chartData.labels : [];
+    const values = window.chartData ? window.chartData.values : [];
+
+    const canvas = document.getElementById('emotionChart');
+    if (!canvas) return; // Safety check
+
+    const ctx = canvas.getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Number of Reports',
+                data: values,
+                backgroundColor: 'rgba(157, 78, 221, 0.6)', 
+                borderColor: '#9d4edd', 
+                borderWidth: 2,
+                borderRadius: 8,
+                hoverBackgroundColor: '#c77dff'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: { color: '#e0e0e0' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#e0e0e0' }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+});

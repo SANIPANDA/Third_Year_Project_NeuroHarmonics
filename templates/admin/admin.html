@@ -20,21 +20,37 @@
 
 <!-- 🔷 SIDEBAR -->
 <aside class="sidebar" id="sidebar">
+    <div class="menu-toggle" onclick="toggleSidebar()">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
+
     <h2 class="logo">NeuroAdmin</h2>
 
-    <button onclick="show('dashboard', event)" class="btn-active">📊 Project</button>
-    <button onclick="show('users', event)">👥 Users</button>
-    <button onclick="show('recommend', event)">🧠 Recommendation</button>
-    <button onclick="show('logs', event)">💬 Inquiries</button>
+    <nav class="nav-links">
+        <button onclick="show('dashboard', event)" class="btn-active">
+            <span class="icon">📊</span> <span class="text">Project</span>
+        </button>
+        <button onclick="show('users', event)">
+            <span class="icon">👥</span> <span class="text">Users</span>
+        </button>
+        <button onclick="show('logs', event)">
+            <span class="icon">💬</span> <span class="text">Inquiries</span>
+        </button>
+    </nav>
 
     <div class="logout">
-        <button onclick="logout()">🚪 Logout</button>
+        <button onclick="logout()">
+            <span class="icon">🚪</span> <span class="text">Logout</span>
+        </button>
     </div>
 </aside>
 
 <main>
 
-<!-- 🔷 DASHBOARD -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <section id="dashboard" class="active">
     <h1>Performance Dashboard</h1>
 
@@ -43,19 +59,19 @@
             <h3>Total Users</h3>
             <p>{{ users_count }}</p>
         </div>
-
         <div class="card">
             <h3>EEG Analysis Total</h3>
-            <p>{{ analysis_count }}</p>
-        </div>
-
+            <p>{{ analysis_count }}</p> </div>
         <div class="card">
             <h3>System Status</h3>
-            <p>Optimal</p>
+            <p style="color: #00ff88;">Optimal</p>
         </div>
     </div>
 
-    <p>Today: {{ today_count }}</p>
+    <div class="graph-container" style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-top: 20px;">
+        <h2 style="color: white; margin-bottom: 15px;">Emotion Distribution</h2>
+        <canvas id="emotionChart"></canvas>
+    </div>
 
     <div id="three-performance-container" class="three-box"></div>
 </section>
@@ -64,26 +80,29 @@
 <section id="users">
     <h1>User Management</h1>
 
+    <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+        <button onclick="deleteSelected()" style="background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">🗑️ Delete Selected</button>
+        <button onclick="document.getElementById('addUserModal').style.display='flex'" style="background: #4cc9f0; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">➕ Add New User</button>
+    </div>
+
     <div class="table-container">
-        <table>
+        <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
+                <tr style="background: #f4f4f4; text-align: left;">
+                    <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                     <th>ID</th>
                     <th>Username</th>
-                    <th>Status</th>
+                    <th>Email</th> <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
-
             <tbody>
                 {% for user in users %}
-                <tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td><input type="checkbox" class="user-checkbox" value="{{ user.id }}"></td>
                     <td>{{ user.id }}</td>
                     <td>{{ user.username }}</td>
-                    <td>
-                        <span class="status-dot {{ user.status }}"></span>
-                        {{ user.status }}
-                    </td>
+                    <td>{{ user.email }}</td> <td>{{ user.status }}</td>
                     <td>
                         <button onclick="sendReport('{{ user.id }}')">Report</button>
                         <button onclick="openNotifyModal('{{ user.id }}')">Notify</button>
@@ -93,25 +112,21 @@
             </tbody>
         </table>
     </div>
-</section>
 
-<!-- 🔷 RECOMMENDATION -->
-<section id="recommend">
-    <h1>Update Wellness Logic</h1>
 
-    <div class="form-group">
-        <label>Detected Emotion:</label>
-
-        <select id="emotion">
-            <option value="Happy">Happy</option>
-            <option value="Sad">Sad</option>
-            <option value="Anxious">Anxious</option>
-        </select>
-
-        <textarea id="content" placeholder="Enter AI recommendation..."></textarea>
-
-        <button onclick="saveRecommendation()">Update</button>
+    <h1>EEG Analysis</h1>
+    <p style="color: #aaa; margin-bottom: 20px;">
+        Review recent EEG emotion detections and send personalized recommendations to users based on their emotional states. Stay proactive in supporting your users' mental well-being by providing timely and relevant advice tailored to their emotional journey.
+<div id="addUserModal" class="modal">
+    <div class="modal-content">
+        <h2>Add New User</h2>
+        <input type="text" id="newUsername" placeholder="Username" style="display:block; width:100%; margin-bottom:10px;">
+        <input type="email" id="newEmail" placeholder="Email" style="display:block; width:100%; margin-bottom:10px;">
+        <input type="password" id="newPassword" placeholder="Password" style="display:block; width:100%; margin-bottom:10px;">
+        <button onclick="submitNewUser()">Create User</button>
+        <button onclick="document.getElementById('addUserModal').style.display='none'">Cancel</button>
     </div>
+</div>
 
     <!-- EEG DATA -->
     <h2>EEG Reports</h2>
@@ -135,16 +150,24 @@
     <h1>Customer Inquiries</h1>
 
     <div class="log-container">
-        {% for msg in messages %}
-        <div class="log-item">
-            <strong>{{ msg.name }}</strong>: {{ msg.message }}
-            <button onclick="replyTo('{{ msg.id }}')">Reply</button>
-        </div>
-        {% endfor %}
+        {% if messages %}
+            {% for msg in messages %}
+            <div class="log-item" style="background: rgba(255,255,255,0.05); margin-bottom: 10px; padding: 15px; border-radius: 8px; border-left: 4px solid #9d4edd;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>{{ msg.name }}</strong>
+                    <span style="font-size: 0.8em; color: #888;">{{ msg.timestamp[:10] if msg.timestamp else 'No Date' }}</span>
+                </div>
+                <p style="margin: 8px 0; color: #eee;">{{ msg.message }}</p>
+                <button onclick="replyTo('{{ msg.id }}')" style="background: #9d4edd; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer;">Reply</button>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; padding: 40px; color: #888;">
+                <p>☕ All caught up! No unresolved inquiries found.</p>
+            </div>
+        {% endif %}
     </div>
 </section>
-
-</main>
 
 <!-- 🔷 REPLY MODAL -->
 <div id="replyModal" class="modal">
@@ -180,6 +203,8 @@
     </div>
 </div>
 
+</main>
+
 <!-- 🔷 STYLES -->
 <style>
 .modal {
@@ -212,7 +237,13 @@ textarea {
 
 <!-- 🔷 SCRIPTS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="{{ url_for('static', filename='admin/admin.js') }}"></script>
+<script>
+    window.chartData = {
+        labels: {{ emotion_labels | tojson }},
+        values: {{ emotion_values | tojson }}
+    };
+</script>
 
+<script src="{{ url_for('static', filename='admin/admin.js') }}"></script>
 </body>
 </html>

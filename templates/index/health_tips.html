@@ -10,7 +10,7 @@
 <body>
 
 <div class="video-background">
-  <video autoplay muted loop playsinline poster="https://res.cloudinary.com/dkjp9svlj/image/upload/f_auto,q_auto/v1771333699/wellness2_1_exbinw.jpg">
+    <video autoplay muted loop playsinline poster="https://res.cloudinary.com/dkjp9svlj/image/upload/v1775239928/image7_sbwrjf.webp">
     <source src="https://res.cloudinary.com/dkjp9svlj/video/upload/so_0,eo_5,w_1280,f_auto,q_auto/v1771333699/wellness2_1_exbinw.mp4" type="video/mp4">
 </div>
 
@@ -87,7 +87,7 @@
         <div class="video-thumb-container">
               <img class="video-thumb" src="{{ url_for('static', filename='dashboard/video_thumbs/' ~ v.thumb) }}" alt="{{ v.title }} thumbnail">
                 {% set video_url = url_for('static', filename=v.video_path) %}
-                <button class="play-btn" onclick="playVideo('{{ video_url }}', '{{ v.title }}')">
+                <button class="play-btn" id="play-btn" onclick="playVideo('{{ video_url }}', '{{ v.title }}')">
             <i class="fas fa-play"></i>
           </button>
         </div>

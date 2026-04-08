@@ -126,22 +126,8 @@
   <script type="module" src="../../static/index/neural-bg.js"></script>
   <!-- Music Player Script -->
   <script src="../../static/music_player.js"></script>
+
   </main>
-  <!-- Music Player Script -->
-  <script src="../../static/music_player.js"></script>
-  <script>
-    // Sliding panel logic
-    function toggleMusicPanel() {
-      const panel = document.getElementById('music-panel');
-      panel.classList.toggle('open');
-      // Update play/pause icon
-      const btn = document.getElementById('playPauseBtn');
-      btn.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
-    }
-    // Update play/pause icon on toggle
-    document.getElementById('playPauseBtn').addEventListener('click', function() {
-      this.innerHTML = window.musicPlayer && window.musicPlayer.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
-    });
-  </script>
+ 
 </body>
 </html>

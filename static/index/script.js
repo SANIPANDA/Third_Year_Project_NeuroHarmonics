@@ -27,8 +27,7 @@ function showRegister() {
 }
 
 
-
-  async function login() {
+async function login() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
     console.log("LOGIN: email=", email, "password=", password);
@@ -57,6 +56,71 @@ function showRegister() {
       alert("Server error. Check console.");
     }
   }
+
+
+  // Function 1: Request the Reset OTP
+async function forgotPassword() {
+    const email = document.getElementById("email").value;
+    
+    if (!email || !isValidEmail(email)) {
+        alert("Please enter your email address first so we know where to send the code.");
+        return;
+    }
+
+    try {
+        const res = await fetch("/forgot_password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            alert("A reset code has been sent to your email!");
+            document.getElementById('reset-section').style.display = 'block';
+            document.getElementById('login-btn').style.display = 'none'; // Hide login button to focus on reset
+        } else {
+            alert(data.error || "Email not found in our records.");
+        }
+    } catch (err) {
+        console.error("FORGOT PASS ERROR:", err);
+    }
+}
+
+// Function 2: Verify OTP and update password in Supabase
+async function verifyResetAndChange() {
+    const email = document.getElementById("email").value;
+    const otp = document.getElementById("reset-otp").value;
+    const newPassword = document.getElementById("new-password").value;
+
+    if (!otp || !newPassword) {
+        alert("Please enter the OTP and your new password.");
+        return;
+    }
+
+    if (!isStrongPassword(newPassword)) {
+        alert("New password is too weak.");
+        return;
+    }
+
+    try {
+        const res = await fetch("/reset_password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, otp, newPassword })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            alert("Password updated! You can now sign in with your new password.");
+            location.reload(); // Refresh to reset the form
+        } else {
+            alert(data.error || "Invalid OTP or session expired.");
+        }
+    } catch (err) {
+        console.error("RESET ERROR:", err);
+    }
+}
 
 
 
@@ -186,5 +250,80 @@ async function submitAdminAuth() {
     } else {
         // Show error if credentials don't match Supabase 'admins' table
         alert("Access Denied: " + result.message);
+    }
+}
+
+// Function to enable/disable the button based on input
+function checkRegFields() {
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const pass = document.getElementById('reg-password').value.trim();
+    const btn = document.getElementById('validate-mail-btn');
+
+    if (name && email && pass && isValidEmail(email)) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
+    } else {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+    }
+}
+
+// STEP 1: Send the OTP
+async function sendRegistrationOTP() {
+    const email = document.getElementById('reg-email').value;
+    const btn = document.getElementById('validate-mail-btn');
+
+    btn.innerText = "Sending Code...";
+    
+    try {
+        const res = await fetch("/send_otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('otp-section').style.display = 'block';
+            btn.style.display = 'none'; // Hide the validate button
+            alert("Success! Check your email for the OTP.");
+        } else {
+            alert(data.error || "Error sending mail.");
+            btn.innerText = "Validate Mail →";
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Server error. Make sure Flask-Mail is configured.");
+    }
+}
+
+// STEP 2: Verify OTP and Redirect
+async function verifyAndRegister() {
+    const fullName = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+    const otp = document.getElementById('reg-otp').value;
+
+    if (otp.length !== 6) return alert("Please enter a 6-digit code.");
+
+    try {
+        const res = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fullName, email, password, otp })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Success! Redirect to dashboard
+            window.location.href = "/dashboard";
+        } else {
+            alert(data.error || "Invalid OTP code.");
+        }
+    } catch (err) {
+        console.error("Verification error:", err);
     }
 }

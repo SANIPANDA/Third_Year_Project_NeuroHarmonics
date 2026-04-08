@@ -9,7 +9,7 @@ class MusicPlayer {
 
     init() {
         // Auto-play ambient track on load (fallback to click if needed)
-        this.loadTrack('/static/music/ambient-loop.mp3'); // Replace with your track path
+        this.loadTrack('https://res.cloudinary.com/dkjp9svlj/video/upload/v1774461684/background_jldumw.mp3'); // Replace with your track path
         this.play();
 
         // Resume on user interaction (iOS/Safari requirement)

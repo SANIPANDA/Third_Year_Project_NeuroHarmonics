@@ -30,32 +30,57 @@
 
       <!-- Login Form -->
       <form id="loginForm" class="form active">
-        <label>Email</label>
-        <input id="email" type="email" placeholder="Enter your email" required />
+    <label>Email</label>
+    <input id="email" type="email" placeholder="Enter your email" required />
 
-        <label>Password</label>
-        <input id="password"  type="password" placeholder="Enter your password" required />
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Enter your password" required />
 
-        <button type="button" class="primary-btn" onclick="login()">
-          Sign In →
+    <div style="text-align: right; margin-top: -10px; margin-bottom: 20px;">
+        <a href="#" onclick="forgotPassword()" style="color: #a855f7; font-size: 0.85rem; text-decoration: none;">Forgot Password?</a>
+    </div>
+
+    <button type="button" id="login-btn" class="primary-btn" onclick="login()">
+        Sign In →
+    </button>
+
+    <div id="reset-section" style="display:none; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+        <h4 style="color: #a855f7; margin-bottom: 10px;">Reset Password</h4>
+        
+        <label>OTP from Email</label>
+        <input id="reset-otp" type="text" placeholder="6-digit code" maxlength="6" />
+
+        <label>New Password</label>
+        <input id="new-password" type="password" placeholder="Create new password" />
+
+        <button type="button" class="primary-btn" style="background: #4f46e5; margin-top: 10px;" onclick="verifyResetAndChange()">
+            Update Password
         </button>
-      </form>
+    </div>
+</form>
 
       <!-- Register Form -->
       <form id="registerForm" class="form hidden">
-        <label>Full Name</label>
-        <input type="text" placeholder="Enter your full name" required />
+          <label>Full Name</label>
+          <input type="text" id="reg-name" placeholder="Enter your full name" oninput="checkRegFields()" required />
 
-        <label>Email</label>
-        <input type="email" placeholder="Enter your email" required />
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="Enter your email" oninput="checkRegFields()" required />
 
-        <label>Password</label>
-        <input type="password" placeholder="Create a password" required />
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="Create a password" oninput="checkRegFields()" required />
 
-        <button type="button" class="primary-btn" onclick="register()">
-            Create Account →
-        </button>
+          <button type="button" id="validate-mail-btn" class="primary-btn" onclick="sendRegistrationOTP()" disabled style="opacity: 0.5; cursor: not-allowed;">
+              Validate Mail →
+          </button>
 
+          <div id="otp-section" style="display:none; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+              <label>Enter 6-Digit OTP</label>
+              <input type="text" id="reg-otp" placeholder="Enter code from email" maxlength="6" style="text-align: center; letter-spacing: 5px;" />
+              <button type="button" class="primary-btn" style="background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="verifyAndRegister()">
+                  Verify & Create Account
+              </button>
+          </div>
       </form>
 
       <div class="divider">OR</div>

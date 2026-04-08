@@ -1,3 +1,4 @@
+import email
 import os
 import logging
 import sqlalchemy
@@ -37,6 +38,8 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.models import model_from_json
 
 import traceback
+
+from werkzeug.security import generate_password_hash
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -145,6 +148,20 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Create the folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+#<----------------mail------------------>
+from flask_mail import Mail, Message
+import random
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False  # Ensure this is False if using Port 587
+app.config['MAIL_USERNAME'] = os.getenv('EMAIL_USER')
+app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASS')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('EMAIL_USER')
+
+mail = Mail(app)
+
 # --- Routes ---
 
 @app.route("/")
@@ -168,6 +185,48 @@ def login_page():
 @app.route("/register", methods=["GET"])
 def register_page():
     return render_template("index/login.html")
+
+@app.route('/support')
+def support():
+    # Instead of looking for a file that doesn't exist:
+    return redirect(url_for('dashboard'))
+
+@app.route('/send_otp', methods=['POST'])
+def send_otp():
+    email = request.json.get('email')
+    otp = str(random.randint(100000, 999999))
+    
+    # Store OTP in session to check later
+    session['registration_otp'] = otp
+    session['registration_email'] = email
+    
+    msg = Message('NeuroHarmonics Verification Code', recipients=[email])
+    msg.body = f"Your NeuroHarmonics registration code is: {otp}"
+    
+    try:
+        mail.send(msg)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    
+from flask import send_from_directory
+
+@app.route('/static/music/<path:filename>')
+def serve_music(filename):
+    return send_from_directory('static/music', filename, conditional=True)
+
+@app.route('/api/register', methods=['POST'])
+def register_user():
+    data = request.json
+    entered_otp = data.get('otp')
+    
+    if entered_otp == session.get('registration_otp'):
+        # 1. Logic to insert user into Supabase 'user' table
+        # 2. Clear the OTP from session
+        session.pop('registration_otp', None)
+        return jsonify({"success": True})
+    
+    return jsonify({"success": False, "error": "Invalid OTP code"}), 400
 
 @app.route("/dashboard")
 def dashboard():
@@ -287,15 +346,10 @@ def logout():
     user_id = session.get("user_id")
     if user_id:
         try:
-            # Refresh the session to ensure a fresh connection
-            db.session.remove() 
-            user = User.query.get(user_id)
-            if user:
-                user.status = "inactive"
-                db.session.commit()
+            # Direct update in Supabase
+            supabase_ctx.table("user").update({"status": "inactive"}).eq("id", user_id).execute()
         except Exception as e:
             logging.error(f"Logout DB Error: {e}")
-            db.session.rollback()
     
     session.clear()
     return redirect("/login")
@@ -304,54 +358,31 @@ def logout():
 
 @app.route('/submit-feedback', methods=['POST'])
 def submit_feedback():
-    if 'username' not in session:
+    if 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Using .first() is good practice here
-    user = User.query.filter_by(username=session['username']).first()
-    
-    # Get form data
     rating_raw = request.form.get('rating')
     comment = request.form.get('comment')
-    
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    if not rating_raw:
-        return jsonify({"error": "Rating is required"}), 400
 
     try:
-        # Convert rating to integer before saving to Supabase
-        rating_int = int(rating_raw)
+        new_feedback = {
+            "user_id": session['user_id'], 
+            "rating": int(rating_raw), 
+            "comment": comment
+        }
         
-        new_feedback = Feedback(
-            user_id=user.id, 
-            rating=rating_int, 
-            comment=comment
-        )
-        
-        db.session.add(new_feedback)
-        db.session.commit()
+        supabase_ctx.table("feedback").insert(new_feedback).execute()
         return jsonify({"success": True})
-
-    except ValueError:
-        return jsonify({"error": "Invalid rating format"}), 400
-    except OperationalError as e:
-        db.session.rollback() # Always rollback on failure
-        logging.error(f"Database write failed: {e}")
-        return jsonify({"error": "Database unavailable"}), 503
     except Exception as e:
-        db.session.rollback()
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Feedback Save Failed: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/api/contact', methods=['POST'])
 def handle_contact():
-    # 1. Debug Session (Check your VS Code terminal)
-    print(f"DEBUG: Current Session Keys: {list(session.keys())}")
-    print(f"DEBUG: Email in Session: {session.get('user_email')}")
+    # 1. Debug Logs
+    print(f"DEBUG: Session Keys: {list(session.keys())}")
     
-    # 2. Check for the specific key 'user_email' set in your login route
+    # 2. Check for required session data
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({"success": False, "error": "Session missing email. Please log out and back in."}), 401
@@ -361,17 +392,16 @@ def handle_contact():
         if not data:
             return jsonify({"success": False, "error": "No data received"}), 400
 
-        # 3. Refresh SQLAlchemy session to prevent 'Connection Closed' errors
-        # This clears stale connections before we talk to Supabase
-        db.session.remove() 
+        # REMOVED: supabase_ctx.session.remove() 
+        # Reason: Supabase Client is stateless and doesn't use SQLAlchemy sessions.
 
-        # 4. Gather info from session (using the keys from your auth logic)
+        # 3. Gather info from session
         user_id = session.get('user_id')
         user_name = session.get('username', 'Guest User')
 
-        # 5. Prepare data for the 'contact_message' table
+        # 4. Prepare data for Supabase
         new_message = {
-            "user_id": user_id if user_id else None, # Ensures it's null if missing
+            "user_id": user_id if user_id else None,
             "name": user_name,
             "email": user_email,
             "subject": data.get('subject', 'No Subject'),
@@ -380,8 +410,8 @@ def handle_contact():
             "admin_reply": None
         }
 
-        # 6. Insert into Supabase
-        # Ensure your Supabase client is initialized as 'supabase'
+        # 5. Insert into Supabase table 'contact_message'
+        # .execute() performs the API call immediately
         result = supabase_ctx.table("contact_message").insert(new_message).execute()
 
         return jsonify({
@@ -391,9 +421,8 @@ def handle_contact():
         }), 200
 
     except Exception as e:
-        # This will print the EXACT error (typos, DB errors, etc.) in your terminal
         print(f"CRITICAL FLASK ERROR: {str(e)}") 
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 @app.route('/support')
@@ -425,6 +454,7 @@ def admin_login_page():
     return render_template("admin/admin_login.html")
 
 # 2. Route to process the credentials against the 'admins' table
+
 @app.route('/admin-login', methods=['POST'])
 def admin_login_process():
     data = request.get_json()
@@ -433,55 +463,157 @@ def admin_login_process():
     u_input = data.get('username', '').strip()
     p_input = data.get('password', '').strip()
 
-    # Case-insensitive query to the 'admins' table
-    admin_user = Admin.query.filter(func.lower(Admin.username) == func.lower(u_input)).first()
+    try:
+        # 1. Fetch admin from Supabase using your 'username' column
+        # Using .ilike for case-insensitive matching
+        response = supabase_ctx.table("admins").select("*").ilike("username", u_input).execute()
+        
+        if not response.data:
+            return jsonify({"success": False, "message": "Admin credentials not found"}), 401
+            
+        admin_user = response.data[0]
 
-    if admin_user:
-        # We also .strip() the DB password in case it was stored as a fixed-length CHAR
-        if admin_user.password.strip() == p_input:
-            # 1. Establish the Secure Session
-            session['username'] = admin_user.username
-            session['role'] = 'admin'
+        # 2. Verify Password (Manual check since you are using plain text for now)
+        # Note: .strip() handles fixed-length character padding if any exists
+        if admin_user.get('password', '').strip() == p_input:
             
-            # 2. Update last login time using the DB timestamp
-            admin_user.last_login = db.func.current_timestamp()
+            # 3. Establish the Secure Session using your schema's 'username' and 'name'
+            session['username'] = admin_user.get('username')
+            session['admin_name'] = admin_user.get('name')
+            session['role'] = admin_user.get('role', 'admin')
             
-            # 3. Commit the changes to the 'admins' table
-            db.session.commit()
+            # 4. Update 'last_login' using your primary key 'admin_id'
+            # We use ISO format for the timestamp compatibility
+            admin_pk = admin_user.get('admin_id')
+            
+            if admin_pk:
+                supabase_ctx.table("admins").update({
+                    "last_login": datetime.now().isoformat()
+                }).eq("admin_id", admin_pk).execute()
             
             return jsonify({
                 "success": True, 
                 "redirect": url_for('admin_panel')
             })
+            
+    except Exception as e:
+        # This will now log specific issues without crashing
+        logging.error(f"Admin Login Error: {e}")
     
     return jsonify({"success": False, "message": "Invalid Admin Credentials"}), 401
 
-
 # unified admin dashboard route
-@app.route("/admin")
+from collections import Counter
+
+@app.route("/admin-panel")
 def admin_panel():
+    # 1. Security Check
     if session.get("role") != "admin":
         return redirect(url_for("admin_login_page"))
+
     try:
-        users = User.query.all()
-        users_count = User.query.count()
-        messages = ContactMessage.query.filter_by(is_resolved=False).all()
-    except OperationalError as e:
-        logging.error(f"Database error in admin_panel(): {e}")
-        users, users_count, messages = [], 0, []
-    return render_template("admin/admin.html", users=users, users_count=users_count, messages=messages)
+        # 2. Fetch Users Data
+        users_query = supabase_ctx.table("user").select("*").execute()
+        users = users_query.data if users_query.data else []
+        users_count = len(users)
+
+        # 3. Fetch EEG Reports & Fix Analysis Count
+        reports_query = supabase_ctx.table("eeg_reports").select("*").execute()
+        eeg_reports = reports_query.data if reports_query.data else []
+        analysis_count = len(eeg_reports)
+
+        # 4. Prepare Data for Emotion Bar Graph
+        # This counts how many times each emotion appears (e.g., {'Happy': 5, 'Sad': 2})
+        emotions_raw = [r.get('emotion_detected', 'Unknown').capitalize() for r in eeg_reports]
+        emotion_counts = dict(Counter(emotions_raw))
+        
+        emotion_labels = list(emotion_counts.keys())
+        emotion_values = list(emotion_counts.values())
+
+        # 5. Fetch Unresolved Inquiries
+        # Assuming your table is 'contact_messages' or 'messages'
+        messages_query = supabase_ctx.table("contact_message")\
+            .select("*")\
+            .eq("is_resolved", False)\
+            .execute()
+        messages = messages_query.data if messages_query.data else []
+
+        # 6. Optional: Get "Today's" analysis count
+        # (Simplified: you can add a filter for created_at later)
+        today_count = 0 
+
+        return render_template(
+            "admin/admin.html", 
+            users=users, 
+            users_count=users_count, 
+            analysis_count=analysis_count, # Correctly passed to the card
+            messages=messages,
+            emotion_labels=emotion_labels, # For the Graph
+            emotion_values=emotion_values, # For the Graph
+            eeg_reports=eeg_reports,       # For the Recommendation tab
+            today_count=today_count
+        )
+
+    except Exception as e:
+        logging.error(f"Supabase error in admin_panel(): {e}")
+        # Return empty data so the page still loads without crashing
+        return render_template(
+            "admin/admin.html", 
+            users=[], 
+            users_count=0, 
+            analysis_count=0, 
+            messages=[],
+            emotion_labels=[],
+            emotion_values=[],
+            eeg_reports=[],
+            today_count=0
+        )
+
+
+@app.route('/admin/reply-inquiry', methods=['POST'])
+def reply_inquiry():
+    data = request.json
+    msg_id = data.get('msg_id')
+    reply_text = data.get('reply_text')
+
+    try:
+        # 1. Fetch the original message to get the user's email
+        msg_res = supabase_ctx.table("contact_message").select("email, name").eq("id", msg_id).execute()
+        
+        if msg_res.data:
+            user_email = msg_res.data[0]['email']
+            user_name = msg_res.data[0]['name']
+
+            # 2. Send Email via Flask-Mail
+            msg = Message(f"Re: Your Inquiry to NeuroHarmonics",
+                          sender=app.config['MAIL_USERNAME'],
+                          recipients=[user_email])
+            msg.body = f"Hello {user_name},\n\n{reply_text}\n\nBest regards,\nNeuroHarmonics Admin"
+            mail.send(msg)
+
+            # 3. Mark as resolved in Supabase and save the reply
+            supabase_ctx.table("contact_message").update({
+                "is_resolved": True,
+                "admin_reply": reply_text
+            }).eq("id", msg_id).execute()
+
+            return jsonify({"success": True})
+        
+        return jsonify({"success": False, "message": "Inquiry not found"}), 404
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @app.route('/post-community', methods=['POST'])
 def post_community():
     data = request.get_json()
     if 'username' in session and data.get('message'):
-        new_msg = CommunityMessage(
-            username=session['username'],
-            content=data['message']
-        )
-        db.session.add(new_msg)
-        db.session.commit()
+        new_msg = {
+            "username": session['username'],
+            "content": data['message']
+        }
+        supabase_ctx.table("community_messages").insert(new_msg).execute()
         return jsonify({"success": True})
     return jsonify({"error": "Unauthorized"}), 401
 
@@ -492,45 +624,43 @@ def update_profile():
     photo = request.files.get('profile-photo')
 
     if not user_id:
-        return jsonify({"success": False, "error": "Session expired. Please log in again."}), 401
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     try:
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({"success": False, "error": "User not found."}), 404
-
-        # 1. Update Username
+        update_data = {}
+        
+        # 1. Matches schema column: 'username'
         if new_name:
-            user.username = new_name
+            update_data["username"] = new_name 
             session['username'] = new_name
 
-        # 2. Update Profile Photo
-       # Update Photo in Supabase Storage
+        # 2. Handle Profile Photo
         if photo and photo.filename != '':
-            # 1. Create a unique path in the bucket
             file_ext = os.path.splitext(photo.filename)[1]
             storage_path = f"avatars/user_{user_id}{file_ext}"
             
-            # 2. Read file content
+            # Read file content for Supabase Storage
             file_content = photo.read()
             
-            # 3. Upload to Supabase Bucket 'avatars'
-            # Note: Ensure you created a PUBLIC bucket named 'avatars' in Supabase first
+            # Upload to 'avatars' bucket
             supabase_ctx.storage.from_('avatars').upload(
                 path=storage_path,
                 file=file_content,
                 file_options={"upsert": "true", "content-type": photo.content_type}
             )
             
-            # 4. Get Public URL and save to SQLAlchemy Database
+            # Get Public URL and match schema column: 'avatar'
             public_url = supabase_ctx.storage.from_('avatars').get_public_url(storage_path)
-            user.avatar = public_url
+            update_data["avatar"] = public_url
 
-        db.session.commit()
+        # 3. Apply updates to the 'user' table
+        if update_data:
+            # result = supabase_ctx.table("user").update(update_data).eq("id", user_id).execute()
+            supabase_ctx.table("user").update(update_data).eq("id", user_id).execute()
+
         return jsonify({"success": True})
 
     except Exception as e:
-        db.session.rollback()
         print(f"Update Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
     
@@ -594,14 +724,17 @@ WELLNESS_DATA = {
     ]
 }
     
+from openai import OpenAI
+import re
+
+# Initialize OpenRouter Client (Compatible with TF 2.20)
+# OpenRouter handles the model versioning for you
+ai_client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key="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", # Get this from openrouter.ai
+)
+
 def get_exercise_recommendation(dominant_frequency, predicted_mood):
-    """
-    Inputs: 
-    - dominant_frequency: (e.g., 'Alpha', 'Beta', 'Theta', 'Delta')
-    - predicted_mood: (e.g., 'Anxious', 'Focused', 'Fatigued')
-    """
-    
-    # This prompt forces the AI to act as a Neuro-Fitness Expert
     prompt = (
         f"Context: User EEG shows dominant {dominant_frequency} waves. "
         f"Mood state is {predicted_mood}. "
@@ -614,19 +747,20 @@ def get_exercise_recommendation(dominant_frequency, predicted_mood):
     )
 
     try:
-        # FIXED SYNTAX:
-        response = client.models.generate_content(
-            model="models/gemini-1.5-flash",
-            contents=prompt
+        response = ai_client.chat.completions.create(
+            model="google/gemini-2.0-flash-001", # OpenRouter alias for Gemini
+            messages=[{"role": "user", "content": prompt}]
         )
-        parts = response.text.split('|')
+        raw_text = response.choices[0].message.content
+        parts = raw_text.split('|')
+        
         return {
             "name": parts[0].strip(),
-            "benefit": parts[1].strip(),
-            "keyword": parts[2].strip()
+            "benefit": parts[1].strip() if len(parts) > 1 else "Optimizes brain state.",
+            "keyword": parts[2].strip() if len(parts) > 2 else "exercise"
         }
     except Exception as e:
-        print(f"API Error: {e}")
+        print(f"AI Error: {e}")
         return {"name": "Yoga", "benefit": "Balances neural activity.", "keyword": "yoga"}
 
 model = EEGProcessor()  # Initialize the processor with the correct sampling frequency
@@ -686,10 +820,10 @@ MUSIC_DATABASE = {
 def generate_ai_recommendation():
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({"success": False, "error": "Session expired. Please login again."}), 401
+        return jsonify({"success": False, "error": "Session expired."}), 401
     
     try:
-        # 1. Fetch latest EEG report from Supabase
+        # 1. Fetch latest EEG report (Same logic)
         latest_report = supabase_ctx.table("eeg_reports") \
             .select("*") \
             .eq("user_id", user_id) \
@@ -698,66 +832,57 @@ def generate_ai_recommendation():
             .execute()
 
         if not latest_report.data:
-            return jsonify({"success": False, "error": "No EEG data found. Analyze a file first!"}), 200
+            return jsonify({"success": False, "error": "No EEG data found."}), 200
 
         report = latest_report.data[0]
         emotion = str(report.get('emotion_detected', 'Happy')).lower().strip()
         wave = report.get('dominant_wave', 'Alpha')
 
-        # 2. Get Music Options
+        # 2. Get Music (Same logic)
         mood_options = MUSIC_DATABASE.get(emotion, MUSIC_DATABASE.get("happy", []))
-        if not mood_options:
-            return jsonify({"success": False, "error": f"No music found for {emotion}"}), 200
+        track1 = random.choice(mood_options) if mood_options else {"music": "", "thumb": ""}
+        track2 = random.choice(mood_options) if mood_options else track1
 
-        selected_samples = random.sample(mood_options, 2) if len(mood_options) >= 2 else [mood_options[0], mood_options[0]]
-        track1, track2 = selected_samples[0], selected_samples[1]
-
-        # 3. Define the Prompt
+        # 3. AI Generation via OpenRouter (TF-Compatible)
         ai_prompt_text = f"User has {wave} waves and feels {emotion}. Return ONLY: Quote | Task1 | Task2 | Task3 | Task4 | Task5"
         
         # Fallbacks
         ai_quote = "Trust the rhythm of your mind."
         ai_tasks = ["Deep breathing", "Stay hydrated", "Gentle stretching", "Short walk", "Mindful smile"]
 
-        # 4. Generate Content using the NEW SDK
-        if ai_client:
-            try:
-                # The syntax changes from generate_content(text) to contents=text
-                response = ai_client.models.generate_content(
-                    model="gemini-1.5-flash", 
-                    contents=ai_prompt_text
-                )
-                
-                raw_text = response.text.strip()
-                print(f"--- GEMINI RAW ---\n{raw_text}")
-
-                # Parsing Logic (remains same)
-                if '|' in raw_text:
-                    parts = [p.strip() for p in raw_text.split('|') if p.strip()]
-                else:
-                    parts = [p.strip() for p in raw_text.split('\n') if p.strip()]
-
-                import re
-                clean_parts = [re.sub(r'^(\d+\.|\-|\*)\s*', '', p) for p in parts]
-
-                if len(clean_parts) >= 6:
-                    ai_quote = clean_parts[0]
-                    ai_tasks = clean_parts[1:6] 
-            except Exception as ai_err:
-                print(f"❌ Gemini API Error: {ai_err}")
-
-        # 5. Save to Supabase
         try:
-            supabase_ctx.table("recommendation").insert({
-                "user_id": user_id,
-                "emotion": emotion,
-                "quote": ai_quote,
-                "tasks": ai_tasks,
-                "music_url": track1["music"],
-                "image_url": track1["thumb"]
-            }).execute()
-        except Exception as db_err:
-            print(f"Supabase Insert Warning: {db_err}")
+            # Using the OpenRouter chat completion instead of direct Gemini SDK
+            response = ai_client.chat.completions.create(
+                model="google/gemini-2.0-flash-001",
+                messages=[{"role": "user", "content": ai_prompt_text}]
+            )
+            
+            raw_text = response.choices[0].message.content.strip()
+            print(f"--- AI RAW ---\n{raw_text}")
+
+            if '|' in raw_text:
+                parts = [p.strip() for p in raw_text.split('|') if p.strip()]
+            else:
+                parts = [p.strip() for p in raw_text.split('\n') if p.strip()]
+
+            clean_parts = [re.sub(r'^(\d+\.|\-|\*)\s*', '', p) for p in parts]
+
+            if len(clean_parts) >= 6:
+                ai_quote = clean_parts[0]
+                ai_tasks = clean_parts[1:6] 
+
+        except Exception as ai_err:
+            print(f"❌ AI API Error: {ai_err}")
+
+        # 4. Save to Supabase (Same logic)
+        supabase_ctx.table("recommendation").insert({
+            "user_id": user_id,
+            "emotion": emotion,
+            "quote": ai_quote,
+            "tasks": ai_tasks,
+            "music_url": track1.get("music"),
+            "image_url": track1.get("thumb")
+        }).execute()
 
         return jsonify({
             "success": True, 
@@ -771,6 +896,7 @@ def generate_ai_recommendation():
     except Exception as e:
         print(f"CRITICAL ROUTE ERROR: {e}")
         return jsonify({"success": False, "error": "Internal Server Error"}), 500
+    
 @app.route('/predict_eeg', methods=['POST'])
 def predict_eeg():
     avg_features = None 
@@ -863,29 +989,41 @@ def get_inquiries():
 
 @app.route('/admin/reply-message', methods=['POST'])
 def reply_message():
-    # Security Check
-    if session.get('role') != 'admin':
-        return jsonify({"success": False, "message": "Unauthorized"}), 403
+    data = request.json
+    msg_id = data.get('id')      # Matches your JS 'id'
+    reply_text = data.get('reply') # Matches your JS 'reply'
 
-    data = request.get_json()
-    msg_id = data.get('id')
-    reply_text = data.get('reply')
+    if not msg_id or not reply_text:
+        return jsonify({"success": False, "message": "Missing data"}), 400
 
     try:
-        # 1. Update the record in Postgres via SQLAlchemy
-        # This will trigger the Supabase Realtime update to the user
-        message = ContactMessage.query.get(msg_id)
-        if message:
-            message.admin_reply = reply_text
-            message.is_resolved = True 
-            db.session.commit()
-            return jsonify({"success": True})
+        # 1. Fetch the original message to get the user's email from 'contact_message'
+        msg_res = supabase_ctx.table("contact_message").select("email, name").eq("id", msg_id).execute()
         
-        # This runs only if 'message' is None
-        return jsonify({"success": False, "message": "Message not found"}), 404
-        
+        if not msg_res.data:
+            return jsonify({"success": False, "message": "Inquiry not found"}), 404
+            
+        user = msg_res.data[0]
+
+        # 2. Send the Email
+        email_msg = Message(
+            subject="Reply to your NeuroHarmonics Inquiry",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[user['email']]
+        )
+        email_msg.body = f"Hello {user['name']},\n\n{reply_text}\n\nBest regards,\nNeuroHarmonics Admin"
+        mail.send(email_msg)
+
+        # 3. Update Supabase: Mark as resolved and store the reply
+        supabase_ctx.table("contact_message").update({
+            "is_resolved": True,
+            "admin_reply": reply_text
+        }).eq("id", msg_id).execute()
+
+        return jsonify({"success": True})
+
     except Exception as e:
-        db.session.rollback()
+        print(f"Reply Error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
     
 
@@ -1048,55 +1186,132 @@ def play_space_invaders():
     subprocess.Popen(['python', 'main.py'], cwd='games/space/Python-Space-Invaders-Game-with-Pygame-main')
     return jsonify({'status': 'Space Invaders launched in new terminal'})
 
-from flask import request, jsonify
-try:
-    from flask_mail import Mail, Message
-except ImportError:
-    Mail = None
-    Message = None
+@app.route('/forgot_password', methods=['POST'])
+def forgot_password():
+    email = request.json.get('email')
+    
+    # Check if user exists in Supabase
+    user_check = supabase_ctx.table("user").select("*").eq("email", email).execute()
+    
+    if not user_check.data:
+        return jsonify({"success": False, "error": "User with this email does not exist."}), 404
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = '06kingbeast@gmail.com'
-app.config['MAIL_PASSWORD'] = '06kingbeast#2328'
+    # Generate Reset OTP
+    reset_otp = str(random.randint(100000, 999999))
+    session['reset_otp'] = reset_otp
+    session['reset_email'] = email # Securely store which email is being reset
 
-if Mail:
-    mail = Mail(app)
-else:
-    mail = None
+    msg = Message('NeuroHarmonics Password Reset', recipients=[email])
+    msg.body = f"Your password reset code is: {reset_otp}. Use this to set a new password."
+    
+    try:
+        mail.send(msg)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": "Failed to send email."})
+
+@app.route('/reset_password', methods=['POST'])
+def reset_password():
+    data = request.json
+    otp = data.get('otp')
+    new_pass = data.get('newPassword')
+    email = data.get('email')
+
+    # Verify session data matches
+    if otp == session.get('reset_otp') and email == session.get('reset_email'):
+        try:
+            hashed_password = generate_password_hash(new_pass)
+            # Update password in Supabase
+            supabase_ctx.table("user").update({
+                "password": hashed_password
+            }).eq("email", email).execute()
+
+            # Clear reset data from session
+            session.pop('reset_otp', None)
+            session.pop('reset_email', None)
+            
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)})
+            
+    return jsonify({"success": False, "error": "Invalid OTP code"}), 400
+
+from collections import Counter
+import logging
 
 @app.route('/admin')
 def admin_dashboard():
+    # 1. Security Check
+    if session.get("role") != "admin":
+        return redirect(url_for("admin_login_page"))
 
-    # 🔥 Count total EEG reports
-    response = supabase_ctx.table("eeg_reports") \
-    .select("*", count="exact") \
-    .execute()
-    analysis_count = len(response.data)
+    try:
+        # 2. Fetch Users (Table name: 'user')
+        users_query = supabase_ctx.table("user").select("*").execute()
+        users = users_query.data if users_query.data else []
+        users_count = len(users)
 
-    # Other data
-    users = supabase_ctx.table("users").select("*").execute().data
+        # 3. Fetch EEG Reports (Table name: 'eeg_report')
+        # Ensure this table in Supabase has 'emotion_detected'
+        eeg_query = supabase_ctx.table("eeg_reports").select("*").execute()
+        eeg_data = eeg_query.data if eeg_query.data else []
+        analysis_count = len(eeg_data)
 
-    return render_template(
-        "admin.html",
-        analysis_count=analysis_count,
-        users=users
-    )
+        # 4. Prepare Emotion Graph Data
+        # We capitalize to ensure grouping works even if case varies
+        emotions_raw = [r.get('emotion_detected', 'Neutral').capitalize() for r in eeg_data]
+        emotion_counts = dict(Counter(emotions_raw))
+        
+        e_labels = list(emotion_counts.keys())
+        e_values = list(emotion_counts.values())
+
+        # 5. Fetch Messages (Assuming table name 'contact_message')
+        # If your table name is different, change it here:
+        messages_query = supabase_ctx.table("contact_message").select("*").execute()
+        messages = messages_query.data if messages_query.data else []
+
+        return render_template(
+            "admin/admin.html",
+            users=users,
+            users_count=users_count,
+            analysis_count=analysis_count,
+            emotion_labels=e_labels,
+            emotion_values=e_values,
+            messages=messages,
+            today_count=0 # Placeholder
+        )
+
+    except Exception as e:
+        logging.error(f"Dashboard Connection Error: {e}")
+        # Return defaults so the page loads without the "Undefined" error
+        return render_template(
+            "admin/admin.html",
+            users=[],
+            users_count=0,
+            analysis_count=0,
+            emotion_labels=[],
+            emotion_values=[],
+            messages=[]
+        )
 
 def get_user_by_id(user_id):
-    response = supabase_ctx.table("users").select("*").eq("id", user_id).execute()
+    response = supabase_ctx.table("user").select("*").eq("id", user_id).execute()
 
     if response.data:
         return response.data[0]
     return None
 
 def insert_notification(user_id, message):
-    supabase_ctx.table("notifications").insert({
-        "user_id": user_id,
-        "message": message,
-        "is_read": False
-    }).execute()
+    try:
+        supabase_ctx.table("notifications").insert({
+            "user_id": user_id,
+            "message": message,
+            "is_read": False
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error inserting notification: {e}")
+        return False
 
 def get_unread_notifications(user_id):
     # Use the global context variable we defined at the top of app.py
@@ -1150,75 +1365,115 @@ else:
     print("⚠️ Supabase client not initialized. 'today_count' set to 0.")
     today_count = 0
 
+# 2. DATABASE: Mark as Read (Newly Added)
 def mark_notifications_read(user_id):
-    supabase_ctx.table("notifications") \
-        .update({"is_read": True}) \
-        .eq("user_id", user_id) \
-        .execute()
-
-@app.route('/admin/report-user', methods=['POST'])
-def report_user():
-    data = request.json
-    user_id = data.get('user_id')
-
-    # 🔥 Get user from DB
-    user = get_user_by_id(user_id)  # YOU must implement this
-
-    if not user:
-        return jsonify({"success": False, "message": "User not found"})
-
     try:
-        if mail:
-            msg = Message(
-                subject="⚠️ Account Report Notice - NeuroHarmonics",
-                sender="your_email@gmail.com",
-                recipients=[user.email]
-            )
-
-            msg.body = f"""
-Hello {user.username},
-
-Your account has been reported by the admin due to suspicious or inappropriate activity.
-
-If you believe this is a mistake, please contact support.
-
-Regards,
-NeuroHarmonics Team
-            """
-
-            mail.send(msg)
-            print(f"Report email sent to {user.email}")
-        else:
-            print(f"Email not sent (Flask-Mail unavailable): {user.email}")
-
-        return jsonify({"success": True})
-
+        supabase_ctx.table("notifications") \
+            .update({"is_read": True}) \
+            .eq("user_id", user_id) \
+            .eq("is_read", False) \
+            .execute()
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
+        print(f"❌ Error marking notifications as read: {e}")
 
+# --- ADMIN: REPORT USER (Sends Email) ---
+@app.route('/admin/report-user', methods=['POST'])
+def admin_report_user():
+    data = request.json
+    uid = data.get('user_id')
+    
+    # Fetch user details from Supabase
+    user_res = supabase_ctx.table("user").select("email, username").eq("id", uid).execute()
+    
+    if user_res.data:
+        user = user_res.data[0]
+        try:
+            msg = Message("Official Report - NeuroHarmonics",
+                          sender=app.config['MAIL_USERNAME'],
+                          recipients=[user['email']])
+            msg.body = f"Hello {user['username']},\n\nYour account has been reported by the system administrator for a policy violation. Please review our terms of service."
+            mail.send(msg)
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+    return jsonify({"success": False, "message": "User not found"}), 404
 
+# --- ADMIN: DELETE MULTIPLE USERS ---
+@app.route('/admin/delete-users', methods=['POST'])
+def admin_delete_users():
+    uids = request.json.get('user_ids', [])
+    try:
+        for uid in uids:
+            supabase_ctx.table("user").delete().eq("id", uid).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# --- ADMIN: ADD NEW USER ---
+@app.route('/admin/add-user', methods=['POST'])
+def admin_add_user():
+    data = request.json
+    new_user = {
+        "username": data.get('username'),
+        "email": data.get('email'),
+        "password": data.get('password'), # Note: Ideally hash this!
+        "status": "active"
+    }
+    try:
+        supabase_ctx.table("user").insert(new_user).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# 3. ROUTE: Admin Notify User (Includes Email Logic)
 @app.route('/admin/notify-user', methods=['POST'])
 def notify_user():
     data = request.json
+    user_id = data.get('user_id')
+    message_text = data.get('message')
 
-    user_id = data['user_id']
-    message = data['message']
+    if not user_id or not message_text:
+        return jsonify({"success": False, "message": "Invalid data"}), 400
 
-    # Insert into DB
-    insert_notification(user_id, message)  # YOU implement
+    # A. Save to Supabase Table
+    db_status = insert_notification(user_id, message_text)
 
-    return jsonify({"success": True})
+    # B. Send Notification Email
+    try:
+        # Fetch user email
+        user_res = supabase_ctx.table("user").select("email, username").eq("id", user_id).execute()
+        
+        if user_res.data and db_status:
+            user = user_res.data[0]
+            
+            # Send via Flask-Mail
+            msg = Message("New Notification - NeuroHarmonics",
+                          sender=app.config['MAIL_USERNAME'],
+                          recipients=[user['email']])
+            msg.body = f"Hello {user['username']},\n\nYou have a new notification from the Admin:\n\n{message_text}"
+            mail.send(msg)
+            
+            return jsonify({"success": True})
+        
+        return jsonify({"success": False, "message": "User email not found"}), 404
 
+    except Exception as e:
+        print(f"❌ Notification Route Error: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# 4. ROUTE: Get User Notifications
 @app.route('/get-notifications/<user_id>')
 def get_notifications(user_id):
+    # Fetch unread list
     notifications = get_unread_notifications(user_id)
 
-    # Mark as read after fetching
-    mark_notifications_read(user_id)
+    # Mark them read so they don't pop up again
+    if notifications:
+        mark_notifications_read(user_id)
 
     return jsonify(notifications)
 
 if __name__ == "__main__":
     # Use the port assigned by the cloud provider, default to 5000
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=port)
