@@ -913,7 +913,7 @@ window.generateNewAIRecommendation = async function() {
 
             // 5. Update Task List
             if(taskContainer) {
-                taskContainer.innerHTML = result.ai_tasks.map((task, index) => `
+                taskContainer.innerHTML = result.tasks.map((task, index) => `
                     <div class="task-item" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #9d4edd;">
                         <div style="font-size: 0.7rem; color: #9d4edd; font-weight: 800; margin-bottom: 5px;">STEP 0${index + 1}</div>
                         <div style="color: #e0aaff; font-size: 0.95rem;">${task}</div>

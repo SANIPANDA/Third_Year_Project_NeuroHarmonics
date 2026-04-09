@@ -17,7 +17,6 @@ from models import db, Feedback, ContactMessage, User, CommunityMessage, Admin
 from auth_routes import auth
 from admin_routes import admin 
 from datetime import datetime
-# from supabase import create_client, Client
 from werkzeug.utils import secure_filename
 
 # from google import genai
@@ -727,38 +726,51 @@ WELLNESS_DATA = {
 from openai import OpenAI
 import re
 
-# Initialize OpenRouter Client (Compatible with TF 2.20)
-# OpenRouter handles the model versioning for you
+# Load the key from your .env file instead of typing it here
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# Initialize OpenRouter Client correctly
 ai_client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key="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", # Get this from openrouter.ai
+    api_key=OPENROUTER_API_KEY, 
 )
 
 def get_exercise_recommendation(dominant_frequency, predicted_mood):
     prompt = (
         f"Context: User EEG shows dominant {dominant_frequency} waves. "
         f"Mood state is {predicted_mood}. "
-        "Task: Recommend one physical exercise that helps optimize this neural state. "
+        "Task: Recommend one physical exercise to optimize this state. "
         "Rules: \n"
         "1. If Beta/Anxious, suggest grounding/rhythmic movement.\n"
         "2. If Theta/Fatigued, suggest alert-increasing movement.\n"
         "3. If Alpha/Neutral, suggest flow-state activities.\n"
+        "CRITICAL: Return ONLY the raw string. Do not include 'Here is your recommendation' or any conversational text.\n"
         "Format: Exercise Name | Neuro-Benefit (max 15 words) | SearchKeyword"
     )
 
     try:
         response = ai_client.chat.completions.create(
-            model="google/gemini-2.0-flash-001", # OpenRouter alias for Gemini
+            model="google/gemini-2.0-flash-001",
             messages=[{"role": "user", "content": prompt}]
         )
-        raw_text = response.choices[0].message.content
-        parts = raw_text.split('|')
         
-        return {
-            "name": parts[0].strip(),
-            "benefit": parts[1].strip() if len(parts) > 1 else "Optimizes brain state.",
-            "keyword": parts[2].strip() if len(parts) > 2 else "exercise"
-        }
+        # .strip() removes accidental newlines at start/end
+        raw_text = response.choices[0].message.content.strip()
+        
+        # If AI still adds a sentence before the pipes, this finds the start of the data
+        if "|" in raw_text:
+            # We split by pipe and clean each resulting piece
+            parts = [p.strip() for p in raw_text.split('|')]
+            
+            return {
+                "name": parts[0],
+                "benefit": parts[1] if len(parts) > 1 else "Optimizes brain state.",
+                "keyword": parts[2] if len(parts) > 2 else "exercise"
+            }
+        else:
+            # Fallback if the AI completely ignores the pipe format
+            raise ValueError("AI response format invalid")
+
     except Exception as e:
         print(f"AI Error: {e}")
         return {"name": "Yoga", "benefit": "Balances neural activity.", "keyword": "yoga"}
