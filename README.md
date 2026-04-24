@@ -1,112 +1,97 @@
-# NeuroHarmonics - EEG Emotion Detection & Brain Music Therapy
+# NeuroHarmonics: EEG-Based Emotion Recognition & Wellness System
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/yourusername/Third_Year_Project_NeuroHarmonics)
+**NeuroHarmonics** is an advanced Human-Computer Interaction (HCI) platform that bridges the gap between neural activity and emotional well-being. By analyzing real-time EEG (Electroencephalogram) signals, the system identifies the user's emotional state and leverages Generative AI to provide personalized wellness interventions.
 
-## 🎯 Features
-- **Real-time EEG Analysis**: Upload .edf files → Instant emotion + brainwave detection
-- **AI Music Recommendations**: Gemini-powered neuro-music therapy 
-- **Facial Emotion Detection**: Live webcam emotion reading
-- **Dashboard & Community**: User analytics, support tickets
-- **Therapy Games**: Flappy Bird, Pacman, Space Invaders (neural training)
-- **Admin Panel**: Full moderation & analytics
+This project implements a complete signal processing pipeline—from raw data acquisition and artifact removal to machine learning-based classification and AI-driven recommendations.
 
-## 🚀 Quick Local Setup
+---
+
+##  Project Methodology (The 11-Step Pipeline)
+
+NeuroHarmonics operates on a strictly defined biological signal processing workflow:
+
+1.  **Signal Acquisition**: Ingests EEG data in `.edf` or `.csv` (14-channel) formats.
+2.  **Bandpass Filtering**: Removes low-frequency drifts and high-frequency noise ($0.5$–$50$Hz).
+3.  **Notch Filtering**: Eliminates $50$Hz power line interference.
+4.  **Artifact Removal**: Applies Common Average Referencing (CAR) to isolate neural signals.
+5.  **Segmentation**: Divides continuous data into $2.0$-second overlapping windows.
+6.  **Welch PSD**: Computes Power Spectral Density to move from time-domain to frequency-domain.
+7.  **Feature Extraction**: Isolates power values for Delta, Theta, Alpha, Beta, and Gamma bands.
+8.  **Relative Power Normalization**: Converts raw power into percentage-based features for stability.
+9.  **ML Classification**: Predicts emotional state using a Random Forest Classifier.
+10. **Confidence Analysis**: Generates a statistical distribution of emotional probability.
+11. **AI Recommendation**: Uses Gemini 1.5 Flash to suggest exercises based on the detected state.
+
+---
+
+##  Project Structure
+
+```text
+NeuroHarmonics/
+├── app.py                # Flask Server: Manages API routes & Gemini integration
+├── processor.py          # The Logic Core: EEGProcessor class & Signal Math
+├── train_model.py        # ML Training: Generates the 'your_trained_model.pkl'
+├── make_test_files.py    # Simulation: Generates synthetic EEG for Demo
+├── your_trained_model.pkl # The 'Brain': Serialized Random Forest Model
+├── static/
+│   ├── css/              # UI Customization
+│   └── js/               # Frontend interactivity & Chart.js integration
+├── templates/
+│   └── dashboard.html    # Main Web Interface
+└── requirements.txt      # List of necessary Python libraries
+```
+
+---
+
+##  Installation & Execution
+
+### 1. Environment Setup
+Ensure you are using Python 3.12. It is recommended to use a virtual environment:
 ```bash
-git clone <repo>
-cd Third_Year_Project_NeuroHarmonics
-pip install -r requirements.txt
+python -m venv venv
+venv\Scripts\activate
+```
+
+### 2. Install Dependencies
+Run the following command to install the neuroimaging and AI libraries:
+```bash
+pip install flask mne pandas numpy scikit-learn matplotlib joblib google-genai
+```
+
+### 3. Initialize the Model
+Before launching the web app, you must train the classifier so it understands the frequency-to-emotion mapping:
+```bash
+python train_model.py
+```
+
+### 4. Start the System
+Launch the Flask backend:
+```bash
 python app.py
 ```
-Visit `http://localhost:5000`
+Open your browser and navigate to `http://127.0.0.1:5000`.
 
-**No .env required** - Uses local SQLite. AI/Supabase optional.
+---
 
-## ☁️ Production Deployment (No .env Sharing!)
+##  Technical Standards
 
-### Render.com (Recommended - Free Tier)
-1. Connect GitHub repo to [Render](https://render.com)
-2. **Web Service** → Build: `pip install -r requirements.txt` → Start: `python app.py`
-3. **Environment Variables** (Dashboard):
-   ```
-   GEMINI_API_KEY=your_key          # Optional
-   SUPABASE_URL=https://...         # Optional  
-   SUPABASE_KEY=your_key           # Optional
-   DATABASE_URL=postgres://...     # Render provides
-   ```
+| Feature | Specification |
+| :--- | :--- |
+| **Sampling Frequency** | $256$ Hz (Default) |
+| **Bands Monitored** | Delta ($0.5$-$4$Hz), Theta ($4$-$8$Hz), Alpha ($8$-$13$Hz), Beta ($13$-$30$Hz) |
+| **Classifier** | Random Forest (Ensemble Learning) |
+| **AI Model** | Google Gemini 1.5 Flash |
+| **Visualization** | Matplotlib (Agg Non-Interactive Backend) |
 
-### Heroku
-```
-heroku create
-heroku addons:create heroku-postgresql  # Free DB
-heroku config:set GEMINI_API_KEY=your_key  # Optional
-git push heroku main
-```
+---
 
-### Railway/DigitalOcean/etc.
-Same pattern: Set env vars in platform dashboard.
+##  Future Enhancements
+* **Hardware Integration**: Expanding support for consumer-grade BCI headsets like Emotiv or Muse.
+* **Temporal Tracking**: Adding a database to track emotional trends over weeks/months.
+* **Deep Learning**: Implementing 1D-CNN (Convolutional Neural Networks) for automated feature discovery.
 
-## 🔧 Configuration
-Copy `.env.example` → `.env` and fill in your keys:
+---
 
-```
-GEMINI_API_KEY=...     # AI features (optional)
-SUPABASE_URL=...       # Cloud storage/users (optional)  
-SUPABASE_KEY=...
-DATABASE_URL=...       # Postgres (local SQLite default)
-```
-
-## 📁 Project Structure
-```
-├── app.py              # Flask app + ML inference
-├── models/             # TensorFlow emotion models
-├── static/             # CSS/JS/UI
-├── templates/          # HTML
-├── data/               # EEG datasets
-├── games/              # Therapy games (Pygame)
-├── requirements.txt    # Dependencies
-└── .env.example        # ✅ Deploy-ready config template
-```
-
-## 🧠 ML Pipeline
-1. **EEG → Features**: MNE-Python extracts 22+ brainwave features
-2. **Model**: TensorFlow CNN → 4 emotions (Angry/Happy/Sad/Tired)  
-3. **Output**: Emotion + Dominant Wave (Alpha/Beta/Theta/Delta) + Therapy recs
-
-## 🔬 Sample EEG Data
-Download from [this dataset](https://physionet.org/content/eegmmidb/1.0.0/) or use included samples.
-
-## 🤖 Features Graceful Degradation
-| Feature | No GEMINI_KEY | No SUPABASE |
-|---------|---------------|-------------|
-| EEG Analysis | ✅ Works | ✅ Works |
-| Music Recs | Static tracks | ✅ Works |
-| Dashboard | Basic | SQLite only |
-| Webcam | ✅ Works | ✅ Works |
-
-## 📊 Tech Stack
-- **Backend**: Flask, SQLAlchemy, Supabase (Postgres)
-- **ML**: TensorFlow, MNE-Python, OpenCV  
-- **AI**: Google Gemini 1.5 Flash
-- **Frontend**: Jinja2, vanilla JS, Canvas/WebRTC
-
-## 🛠️ Development
-```bash
-pip install -r requirements.txt
-python app.py  # http://localhost:5000
-```
-
-**Admin Login**: `/admin-login-page` (credentials in DB)
-
-## 📈 Production Monitoring
-- Render: Built-in metrics/logs
-- Supabase: Real-time analytics dashboard
-- ML Model: Local `.h5` files (no external deps)
-
-## 🎉 Ready for Production!
-✅ **No .env committed**  
-✅ **SQLite fallback**  
-✅ **Optional cloud services**  
-✅ **One-click deploys**
-
-*Built for your Third Year Project - Deploy anywhere! 🚀*
-
+**Developed By:** Aratrika Panda  ,Ariyanka Panda, Ashreya Awasthi
+**Academic Institution:** Banasthali Vidyapith  
+**Specialization:** B.Tech Computer Science and Artificial Intelligence
